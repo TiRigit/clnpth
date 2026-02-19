@@ -5,8 +5,10 @@ Name: clnpth
 Typ: KI-Redaktionssystem (Mehrsprachige WordPress-Publikation)
 DB-Schema: clnpth
 Frontend: React + Vite + TypeScript (strict mode)
-Backend: FastAPI (Python 3.12) + SQLAlchemy 2.0
-Editor: TipTap (Prosemirror-basiert)
+Backend: FastAPI (Python 3.12) + SQLAlchemy 2.0 + asyncpg
+Editor: TipTap (Prosemirror-basiert) — noch nicht integriert
+GitHub: https://github.com/TiRigit/clnpth
+Status: Alle 7 Phasen implementiert, Frontend-Screens nutzen noch Mockdaten
 
 ## Architektur-Ueberblick
 
@@ -15,16 +17,16 @@ Lokales Web-UI (FastAPI + React)
     ↕
 n8n Orchestrator (localhost:5678)
     ↕
-┌────────────────────────────┐
-│ Kontext-Agent              │
-│ Redaktions-Agent (Claude)  │
-│ Uebersetzungs-Team         │ ← DeepL + Mistral Review
-│ SEO-Agent (Claude)         │
-│ Bild-Agent (ComfyUI)       │
-│ Supervisor (Mistral Large) │
-└────────────────────────────┘
+┌────────────────────────────────────┐
+│ Kontext-Agent                      │
+│ Redaktions-Agent (Claude)          │
+│ Uebersetzungs-Team (DeepL+Mistral)│
+│ SEO-Agent (Claude)                 │
+│ Bild-Agent (ComfyUI/RunPod)       │
+│ Supervisor (Mistral Large, EU)     │
+└────────────────────────────────────┘
     ↕
-WordPress REST API (Local App → Hetzner)
+WordPress REST API (Application Passwords)
 ```
 
 ## Verzeichnisstruktur
@@ -33,45 +35,100 @@ WordPress REST API (Local App → Hetzner)
 clnpth/
 ├── frontend/                    # React (Vite) + TypeScript
 │   ├── src/
-│   │   ├── screens/             # 5 Haupt-Screens
-│   │   ├── components/          # Wiederverwendbare UI-Bausteine
-│   │   ├── hooks/               # Custom Hooks (WebSocket, Artikel, A11y)
-│   │   ├── styles/              # Design Tokens + Accessibility CSS
+│   │   ├── screens/             # 5 Haupt-Screens (Input, Review, Queue, Archive, Supervisor)
+│   │   ├── components/          # Nav, Badge, Button, Spinner, Divider, A11yPanel
+│   │   ├── hooks/               # useArticles, useTranslations, useImage, useSupervisor,
+│   │   │                        # usePublish, useWebSocket, useAccessibility
+│   │   ├── api/                 # Typisierter API-Client (client.ts)
+│   │   ├── styles/              # Design Tokens + Accessibility CSS + lokale Fonts
 │   │   └── types/               # TypeScript-Typen
-│   └── package.json
+│   ├── public/fonts/            # Playfair Display + JetBrains Mono (TTF, DSGVO-lokal)
+│   └── vite.config.ts           # Proxy: /api → 8001, /ws → ws://8001
 ├── backend/
-│   ├── main.py                  # FastAPI App
-│   ├── config.py                # Pydantic Settings
-│   ├── routes/                  # API-Endpunkte
-│   ├── services/                # Externe Dienste (n8n, WP, DeepL, ComfyUI)
-│   ├── db/                      # SQLAlchemy Models + Alembic Migrations
-│   └── tests/
-├── CLAUDE.md                    # Diese Datei
-└── docker-compose.yml           # Dev-Overrides (nutzt bestehenden PG-Stack)
+│   ├── main.py                  # FastAPI App + SPA-Serving + Static Files
+│   ├── config.py                # Pydantic Settings (CLNPTH_ prefix, ../.env)
+│   ├── ws.py                    # WebSocket ConnectionManager
+│   ├── routes/
+│   │   ├── articles.py          # CRUD + n8n-Trigger + Lernstrategie-Integration
+│   │   ├── translations.py      # Trigger, List, Edit, Approve
+│   │   ├── images.py            # Trigger, Status, Backends
+│   │   ├── supervisor.py        # Dashboard, Evaluate, Tonality CRUD, Topics
+│   │   ├── publish.py           # WordPress-Publikation (DE + Uebersetzungen)
+│   │   └── webhook.py           # n8n-Callback (Artikel/Uebersetzung/Supervisor Upsert)
+│   ├── services/
+│   │   ├── n8n_client.py        # n8n Webhook-Trigger
+│   │   ├── deepl_client.py      # DeepL API (DE→EN/ES/FR, HTML-Handling)
+│   │   ├── mistral_client.py    # Mistral Review (idiomatische Qualitaet)
+│   │   ├── translation_pipeline.py  # DeepL → Mistral → DB → WebSocket
+│   │   ├── supervisor_agent.py  # Mistral Large Artikelbewertung (4 Kriterien)
+│   │   ├── learning_strategy.py # Tonality-Profil + Themen-Ranking + Abweichungen
+│   │   ├── comfyui_client.py    # ComfyUI SDXL Workflows (4 Bildtypen)
+│   │   ├── runpod_client.py     # RunPod Serverless Fallback
+│   │   ├── image_pipeline.py    # ComfyUI → RunPod → Speichern → DB
+│   │   └── wordpress_client.py  # WP REST API v2 (Posts, Media, SEO-Meta)
+│   ├── db/
+│   │   ├── models.py            # SQLAlchemy: 6 Tabellen + pgVector
+│   │   ├── schemas.py           # Pydantic Request/Response Schemas
+│   │   └── session.py           # Async Engine (ssl=disable) + search_path
+│   └── .venv/                   # Python 3.14 Virtual Environment
+├── Dockerfile                   # Multi-Stage: Node frontend-build + Python backend
+├── docker-compose.vps.yml       # Production: App + pgvector DB + Volumes
+├── Caddyfile.block              # Reverse Proxy fuer clnpth.solvingsystems.de
+├── .dockerignore
+└── CLAUDE.md                    # Diese Datei
 ```
 
 ## Datenbank-Tabellen (Schema: clnpth)
 
-- `redaktions_log` — Artikel-Tracking (Trigger, Status, Kontext)
-- `artikel_archiv` — Volltext + pgVector Embeddings
-- `artikel_uebersetzungen` — Sprachvarianten (DE/EN/ES/FR)
-- `supervisor_log` — Entscheidungen, Scores, Feedback
-- `tonality_profil` — Lernender Stilguide
+- `redaktions_log` — Artikel-Tracking (Trigger, Status, Kontext, Sprachen)
+- `artikel_archiv` — Volltext + pgVector Embeddings + SEO + Bild
+- `artikel_uebersetzungen` — Sprachvarianten (DE/EN/ES/FR) + wp_post_id
+- `supervisor_log` — Entscheidungen, Scores, Feedback, Abweichungen
+- `tonality_profil` — Lernender Stilguide (Merkmale, Gewichtung, Belege)
 - `themen_ranking` — Statistik, Freigaberate je Kategorie
-- `rss_archiv` — Gefilterte Feed-Eintraege
 
-## Barrierefreiheit (WCAG AAA)
+## API-Endpunkte
 
-WICHTIG: Barrierefreiheit ist Kernfeature, nicht Nachruestung.
-- Touch-Targets: min 44x44px
-- Skip-Navigation: "Zum Hauptinhalt", "Zur Navigation"
-- ARIA: Labels, Roles, Live-Regions fuer Status-Updates
-- Tastatur: Tab-Reihenfolge, Focus-Visible, Escape-Schliessung
-- Farbenblind-Modus: Pattern-Indikatoren zusaetzlich zu Farben
-- Zoom: CSS rem-basiert, 200% ohne Layout-Bruch
-- Reduzierte Bewegung: `prefers-reduced-motion` respektieren
-- Hoher Kontrast: `prefers-contrast: high` unterstuetzen
-- TipTap-Editor: Toolbar per Tastatur navigierbar
+| Pfad | Methode | Beschreibung |
+|------|---------|-------------|
+| `/api/articles/` | GET, POST | Artikelliste / Erstellen + n8n-Trigger |
+| `/api/articles/stats` | GET | Queue-Statistiken |
+| `/api/articles/{id}` | GET | Detail mit Archiv, Uebersetzungen, Supervisor |
+| `/api/articles/{id}/approve` | PATCH | Freigeben + Lernstrategie-Update |
+| `/api/articles/{id}/revise` | PATCH | Ueberarbeiten + n8n Re-Trigger |
+| `/api/articles/{id}/translations/` | GET, POST trigger | Uebersetzungen |
+| `/api/articles/{id}/translations/{lang}` | GET, PATCH, POST approve | Einzelsprache |
+| `/api/articles/{id}/image/trigger` | POST | Bildgenerierung starten |
+| `/api/articles/{id}/image/status` | GET | Bildstatus |
+| `/api/articles/{id}/publish/` | POST | WordPress-Publikation |
+| `/api/articles/{id}/publish/status` | GET | Publikationsstatus |
+| `/api/supervisor/dashboard` | GET | Komplett-Dashboard |
+| `/api/supervisor/evaluate` | POST | Supervisor-Bewertung triggern |
+| `/api/supervisor/tonality` | GET, POST, DELETE | Tonalitaets-Profil CRUD |
+| `/api/webhook/n8n` | POST | n8n-Callback |
+| `/api/health` | GET | Health-Check |
+| `/ws/status` | WS | Live-Status-Updates |
+
+## Konfiguration (.env)
+
+Alle mit Prefix `CLNPTH_`:
+- `DATABASE_URL` — PostgreSQL (asyncpg, ssl=disable lokal)
+- `DEEPL_API_KEY` — DeepL Free/Pro
+- `MISTRAL_API_KEY` — Mistral Large (Supervisor + Translation Review)
+- `WP_URL`, `WP_USER`, `WP_APP_PASSWORD` — WordPress
+- `RUNPOD_API_KEY`, `RUNPOD_ENDPOINT_ID` — RunPod (optional)
+- `N8N_URL`, `N8N_WEBHOOK_TOKEN` — n8n Orchestrator
+- `COMFYUI_URL` — ComfyUI (localhost:8188)
+
+## Barrierefreiheit
+
+Opt-Out-System (Standard: barrierearm):
+- `useAccessibility` Hook mit localStorage-Persistenz
+- A11yPanel: Toggle "Barrierearm" (44px Targets) / "Kompakt" (keine Min-Groesse)
+- Farbenblind-Modus: Pattern-Indikatoren via CSS `data-cb-*` Attribute
+- Skip-Navigation, ARIA Labels/Roles/Live-Regions, Focus-Visible
+- Lokale Fonts (DSGVO): Playfair Display + JetBrains Mono (TTF)
+- `prefers-reduced-motion` + `prefers-contrast: high` unterstuetzt
 
 ## Design Tokens
 
@@ -84,6 +141,47 @@ Gruen/Rot/Blau: #4caf7d / #e05a4e / #5a8fc8
 Schriften:      Playfair Display (Ueberschriften), JetBrains Mono (UI)
 ```
 
+## Entwicklung
+
+```bash
+# Backend (Port 8001, da 8000 von Paperless belegt)
+cd backend && source .venv/bin/activate
+uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+
+# Frontend (Port 5173, Proxy → 8001)
+cd frontend && npm run dev
+
+# Docker-Stack (PostgreSQL muss laufen)
+cd /Volumes/AI-Data/AI-Projekt && docker compose up -d postgres
+```
+
+## Bekannte Probleme
+
+- asyncpg braucht `ssl="disable"` fuer lokalen PostgreSQL-Container
+- DB-Spalten sind `TIMESTAMP WITHOUT TIME ZONE` — kein `datetime.now(timezone.utc)` verwenden
+- Port 8000 belegt durch Paperless → Backend auf 8001
+- Frontend-Screens nutzen noch Mockdaten (Hooks vorhanden, nicht angebunden)
+- TipTap-Editor noch nicht integriert
+
+## Implementierungs-Phasen
+
+- **Phase 0:** Scaffolding + DB ✓
+- **Phase 1-2:** UI-Migration + Accessibility ✓
+- **Phase 3:** Backend API (FastAPI + asyncpg) ✓
+- **Phase 4:** Uebersetzungs-Pipeline (DeepL + Mistral) ✓
+- **Phase 5:** Bild-Pipeline (ComfyUI + RunPod) ✓
+- **Phase 6:** Supervisor + Lernstrategie ✓
+- **Phase 7:** WordPress-Integration + Deployment ✓
+
+## Naechste Schritte
+
+- [ ] n8n-Workflows fuer Artikel-Pipeline erstellen
+- [ ] Frontend-Screens an echte Hooks anbinden (Mockdaten ersetzen)
+- [ ] TipTap-Editor im ReviewScreen integrieren
+- [ ] Tests schreiben (pytest Backend, Vitest Frontend)
+- [ ] Erstes VPS-Deployment via `deploy clnpth`
+- [ ] API-Keys in .env konfigurieren (DeepL, Mistral, WP)
+
 ## Modell-Auswahl (Subagents)
 
 | Aufgabe | Modell | Begruendung |
@@ -95,22 +193,6 @@ Schriften:      Playfair Display (Ueberschriften), JetBrains Mono (UI)
 | Tests, CI/CD | Sonnet | Standard |
 | Barrierefreiheit-Pruefung | Sonnet | Domain-Expertise |
 
-## Implementierungs-Phasen
-
-- **Phase 0:** Scaffolding + DB ← AKTUELL
-- **Phase 1:** UI-Grundgeruest + Eingabe-Screen
-- **Phase 2:** Redaktions-Screen + Queue
-- **Phase 3:** n8n + Claude Integration
-- **Phase 4:** Uebersetzungs-Pipeline (DeepL + Mistral)
-- **Phase 5:** Bild-Pipeline (ComfyUI + RunPod)
-- **Phase 6:** Supervisor + Lernstrategie
-- **Phase 7:** WordPress-Integration + Deployment
-
-## Agent-Registry
-
-- **Project Head:** `head-clnpth` (koordiniert alle Domain-Agents)
-- **Domain Hands:** style, function, component, test, docker, security, monitor
-
 ## Regeln
 
 1. Sprache: Deutsch fuer Kommunikation, Englisch fuer Code
@@ -118,6 +200,6 @@ Schriften:      Playfair Display (Ueberschriften), JetBrains Mono (UI)
 3. Python type hints im Backend
 4. Keine Credentials in Code oder Commits
 5. SQL: Parametrisierte Queries, kein String-Concatenation
-6. Git: Feature-Branches, Conventional Commits
+6. Git: Conventional Commits
 7. Schriften: Lokal einbinden (DSGVO), keine Google Fonts CDN
 8. EU-Konformitaet: Daten bevorzugt EU-verortet (DeepL Koeln, Mistral Paris)
