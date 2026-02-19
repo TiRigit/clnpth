@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     runpod_endpoint_id: str = ""
     image_storage_path: str = "static/images"
     wp_url: str = "http://meinsite.local/wp-json/wp/v2"
+    wp_user: str = ""
+    wp_app_password: str = ""
     comfyui_url: str = "http://localhost:8188"
 
     model_config = {

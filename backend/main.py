@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import settings
@@ -10,6 +11,7 @@ from db.session import engine
 from routes.articles import router as articles_router
 from routes.images import router as images_router
 from routes.translations import router as translations_router
+from routes.publish import router as publish_router
 from routes.supervisor import router as supervisor_router
 from routes.webhook import router as webhook_router
 from ws import manager
@@ -40,6 +42,7 @@ app.add_middleware(
 
 app.include_router(articles_router)
 app.include_router(images_router)
+app.include_router(publish_router)
 app.include_router(supervisor_router)
 app.include_router(translations_router)
 app.include_router(webhook_router)
@@ -48,6 +51,19 @@ app.include_router(webhook_router)
 _img_dir = Path(settings.image_storage_path)
 _img_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/images", StaticFiles(directory=str(_img_dir)), name="images")
+
+# Serve frontend SPA in production (built files in static/frontend/)
+_frontend_dir = Path("static/frontend")
+if _frontend_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(_frontend_dir / "assets")), name="frontend-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """Serve frontend SPA — all non-API routes return index.html."""
+        file_path = _frontend_dir / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_frontend_dir / "index.html")
 
 
 @app.get("/api/health")

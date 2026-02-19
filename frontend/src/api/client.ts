@@ -118,6 +118,18 @@ export interface SupervisorDashboard {
   deviation_stats: DeviationStats;
 }
 
+export interface PublishStatus {
+  artikel_id: number;
+  published: boolean;
+  publications: Record<string, { wp_post_id: number }>;
+}
+
+export interface WpCheckResult {
+  connected: boolean;
+  wp_url: string | null;
+  categories: { id: number; name: string }[];
+}
+
 // ── API functions ──
 
 export const api = {
@@ -228,6 +240,20 @@ export const api = {
 
     deviations: () =>
       request<DeviationStats>("/supervisor/deviations"),
+  },
+
+  publish: {
+    trigger: (articleId: number, wpStatus: string = "draft", languages?: string[]) =>
+      request<{ ok: boolean; artikel_id: number }>(`/articles/${articleId}/publish/`, {
+        method: "POST",
+        body: JSON.stringify({ wp_status: wpStatus, languages: languages ?? null, upload_image: true }),
+      }),
+
+    status: (articleId: number) =>
+      request<PublishStatus>(`/articles/${articleId}/publish/status`),
+
+    wpCheck: (articleId: number) =>
+      request<WpCheckResult>(`/articles/${articleId}/publish/wp-check`),
   },
 
   health: () => request<{ status: string; version: string; ws_connections: number }>("/health"),

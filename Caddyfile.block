@@ -1,0 +1,17 @@
+clnpth.solvingsystems.de {
+	# API + WebSocket → Backend
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8088
+	}
+	handle /ws/* {
+		reverse_proxy 127.0.0.1:8088
+	}
+	handle /static/* {
+		reverse_proxy 127.0.0.1:8088
+	}
+
+	# Frontend SPA → Backend (serves static/frontend/)
+	handle {
+		reverse_proxy 127.0.0.1:8088
+	}
+}
