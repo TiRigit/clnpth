@@ -8,7 +8,7 @@ Frontend: React + Vite + TypeScript (strict mode)
 Backend: FastAPI (Python 3.12) + SQLAlchemy 2.0 + asyncpg
 Editor: TipTap (Prosemirror-basiert) — noch nicht integriert
 GitHub: https://github.com/TiRigit/clnpth
-Status: Alle 7 Phasen implementiert, Frontend-Screens nutzen noch Mockdaten
+Status: Alle 7 Phasen implementiert, Frontend-Screens an echte API-Hooks angebunden
 
 ## Architektur-Ueberblick
 
@@ -40,6 +40,7 @@ clnpth/
 │   │   ├── hooks/               # useArticles, useTranslations, useImage, useSupervisor,
 │   │   │                        # usePublish, useWebSocket, useAccessibility
 │   │   ├── api/                 # Typisierter API-Client (client.ts)
+│   │   ├── utils/               # timeAgo etc.
 │   │   ├── styles/              # Design Tokens + Accessibility CSS + lokale Fonts
 │   │   └── types/               # TypeScript-Typen
 │   ├── public/fonts/            # Playfair Display + JetBrains Mono (TTF, DSGVO-lokal)
@@ -160,8 +161,8 @@ cd /Volumes/AI-Data/AI-Projekt && docker compose up -d postgres
 - asyncpg braucht `ssl="disable"` fuer lokalen PostgreSQL-Container
 - DB-Spalten sind `TIMESTAMP WITHOUT TIME ZONE` — kein `datetime.now(timezone.utc)` verwenden
 - Port 8000 belegt durch Paperless → Backend auf 8001
-- Frontend-Screens nutzen noch Mockdaten (Hooks vorhanden, nicht angebunden)
 - TipTap-Editor noch nicht integriert
+- WebSocket-Live-Updates noch nicht in Screens integriert (Hook existiert)
 
 ## Implementierungs-Phasen
 
@@ -176,7 +177,8 @@ cd /Volumes/AI-Data/AI-Projekt && docker compose up -d postgres
 ## Naechste Schritte
 
 - [ ] n8n-Workflows fuer Artikel-Pipeline erstellen
-- [ ] Frontend-Screens an echte Hooks anbinden (Mockdaten ersetzen)
+- [x] Frontend-Screens an echte Hooks anbinden (Mockdaten ersetzen)
+- [ ] WebSocket-Integration (useWebSocket fuer Live-Updates in Screens)
 - [ ] TipTap-Editor im ReviewScreen integrieren
 - [ ] Tests schreiben (pytest Backend, Vitest Frontend)
 - [ ] Erstes VPS-Deployment via `deploy clnpth`
