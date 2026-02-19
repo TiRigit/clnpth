@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from db.session import engine
 from routes.articles import router as articles_router
+from routes.images import router as images_router
 from routes.translations import router as translations_router
 from routes.webhook import router as webhook_router
 from ws import manager
@@ -35,8 +38,14 @@ app.add_middleware(
 )
 
 app.include_router(articles_router)
+app.include_router(images_router)
 app.include_router(translations_router)
 app.include_router(webhook_router)
+
+# Serve generated images
+_img_dir = Path(settings.image_storage_path)
+_img_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static/images", StaticFiles(directory=str(_img_dir)), name="images")
 
 
 @app.get("/api/health")

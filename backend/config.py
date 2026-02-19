@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     deepl_api_url: str = "https://api-free.deepl.com/v2"
     mistral_api_key: str = ""
     mistral_model: str = "mistral-large-latest"
+    runpod_api_key: str = ""
+    runpod_endpoint_id: str = ""
+    image_storage_path: str = "static/images"
     wp_url: str = "http://meinsite.local/wp-json/wp/v2"
     comfyui_url: str = "http://localhost:8188"
 

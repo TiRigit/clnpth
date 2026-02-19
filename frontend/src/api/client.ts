@@ -138,5 +138,26 @@ export const api = {
       }),
   },
 
+  images: {
+    trigger: (articleId: number, prompt: string, imageType: string = "illustration") =>
+      request<{ ok: boolean; artikel_id: number; backend: string }>(
+        `/articles/${articleId}/image/trigger`,
+        {
+          method: "POST",
+          body: JSON.stringify({ prompt, image_type: imageType }),
+        }
+      ),
+
+    status: (articleId: number) =>
+      request<{ artikel_id: number; bild_url: string | null; bild_prompt: string | null; status: string }>(
+        `/articles/${articleId}/image/status`
+      ),
+
+    backends: (articleId: number) =>
+      request<{ comfyui: boolean; runpod: boolean }>(
+        `/articles/${articleId}/image/backends`
+      ),
+  },
+
   health: () => request<{ status: string; version: string; ws_connections: number }>("/health"),
 };
