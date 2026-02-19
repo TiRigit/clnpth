@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from db.session import engine
 from routes.articles import router as articles_router
+from routes.translations import router as translations_router
 from routes.webhook import router as webhook_router
 from ws import manager
 
@@ -34,6 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(articles_router)
+app.include_router(translations_router)
 app.include_router(webhook_router)
 
 

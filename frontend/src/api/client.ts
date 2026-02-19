@@ -110,5 +110,33 @@ export const api = {
       }),
   },
 
+  translations: {
+    list: (articleId: number) =>
+      request<TranslationResponse[]>(`/articles/${articleId}/translations/`),
+
+    get: (articleId: number, lang: string) =>
+      request<TranslationResponse>(`/articles/${articleId}/translations/${lang}`),
+
+    trigger: (articleId: number, languages?: string[]) =>
+      request<{ ok: boolean; artikel_id: number; languages: string[] }>(
+        `/articles/${articleId}/translations/trigger`,
+        {
+          method: "POST",
+          body: JSON.stringify({ languages: languages ?? null }),
+        }
+      ),
+
+    edit: (articleId: number, lang: string, data: { titel?: string; lead?: string; body?: string }) =>
+      request<TranslationResponse>(`/articles/${articleId}/translations/${lang}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+
+    approve: (articleId: number, lang: string) =>
+      request<{ ok: boolean }>(`/articles/${articleId}/translations/${lang}/approve`, {
+        method: "POST",
+      }),
+  },
+
   health: () => request<{ status: string; version: string; ws_connections: number }>("/health"),
 };

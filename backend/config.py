@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     frontend_port: int = 5173
     n8n_url: str = "http://localhost:5678"
     n8n_webhook_token: str = ""
+    deepl_api_key: str = ""
+    deepl_api_url: str = "https://api-free.deepl.com/v2"
+    mistral_api_key: str = ""
+    mistral_model: str = "mistral-large-latest"
     wp_url: str = "http://meinsite.local/wp-json/wp/v2"
     comfyui_url: str = "http://localhost:8188"
 
