@@ -1,0 +1,17 @@
+/* ============================================
+   PROJEKT-OVERRIDES
+   Ueberschreibt globale Design Tokens bei Bedarf.
+   Importiere globale Tokens zuerst.
+   ============================================ */
+
+@import './global/tokens.css';
+@import './global/reset.css';
+@import './global/utilities.css';
+
+/* Projekt-spezifische Overrides */
+:root {
+  /* Beispiel: Projekt-Primaerfarbe ueberschreiben */
+  /* --color-primary: #8b5cf6; */
+}
+
+/* Projekt-spezifische Styles hier */
