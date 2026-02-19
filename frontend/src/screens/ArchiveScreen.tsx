@@ -1,25 +1,20 @@
 import { COLORS } from "../styles/tokens";
 import { useAccessibility } from "../hooks/useAccessibility";
+import { useArticleList } from "../hooks/useArticles";
+import { useSupervisorDashboard } from "../hooks/useSupervisor";
 import Badge from "../components/Badge";
-
-const TOPICS = [
-  { topic: "KI & Regulierung", count: 18, rate: 94 },
-  { topic: "Open Source Tools", count: 12, rate: 88 },
-  { topic: "\u00dcbersetzungstechnik", count: 9, rate: 85 },
-  { topic: "DSGVO & Datenschutz", count: 14, rate: 79 },
-  { topic: "Verlags-Workflows", count: 7, rate: 71 },
-  { topic: "KI-Bildgenerierung", count: 8, rate: 65 },
-];
-
-const RECENT = [
-  { title: "EU AI Act 2026: Was Verlage wissen m\u00fcssen", cat: "Technologie", score: 87 },
-  { title: "Mistral Large 3 im Praxistest", cat: "Technologie", score: 92 },
-  { title: "Open Source AI f\u00fcr Redaktionen", cat: "Gesellschaft", score: 79 },
-  { title: "DeepL vs. Google Translate 2026", cat: "Technologie", score: 88 },
-];
+import Spinner from "../components/Spinner";
 
 export default function ArchiveScreen() {
   const { minTarget } = useAccessibility();
+  const { articles, loading: articlesLoading } = useArticleList("published");
+  const { dashboard, loading: dashLoading } = useSupervisorDashboard();
+
+  const topics = dashboard?.themen_ranking ?? [];
+  const subtitle = articles.length > 0
+    ? `${articles.length} publizierte Artikel \u00b7 pgvector Archiv-DB`
+    : "Lade\u2026";
+
   return (
     <div style={{ flex: 1, overflow: "auto", padding: 32 }} className="anim-fade">
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -36,7 +31,7 @@ export default function ArchiveScreen() {
               Archiv
             </h1>
             <p style={{ color: COLORS.textMuted, fontSize: 12 }}>
-              68 publizierte Artikel &middot; pgvector Archiv-DB
+              {subtitle}
             </p>
           </div>
           <div>
@@ -90,34 +85,42 @@ export default function ArchiveScreen() {
               gap: 10,
             }}
           >
-            {TOPICS.map((t) => (
-              <div key={t.topic} style={{ background: COLORS.surfaceHigh, borderRadius: 4, padding: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ color: COLORS.text, fontSize: 12 }}>{t.topic}</span>
-                  <span style={{ color: COLORS.textDim, fontSize: 10 }}>{t.count}</span>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-valuenow={t.rate}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`Freigaberate ${t.topic}`}
-                  style={{ height: 3, background: COLORS.border, borderRadius: 2 }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      borderRadius: 2,
-                      background: COLORS.accent,
-                      width: `${t.rate}%`,
-                    }}
-                  />
-                </div>
-                <div style={{ color: COLORS.textDim, fontSize: 10, marginTop: 4 }}>
-                  {t.rate}% Freigabe
-                </div>
+            {dashLoading && topics.length === 0 && (
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 20 }}>
+                <Spinner size={14} label="Lade Themen" />
               </div>
-            ))}
+            )}
+            {topics.map((t) => {
+              const rate = t.freigabe_rate ?? 0;
+              return (
+                <div key={t.id} style={{ background: COLORS.surfaceHigh, borderRadius: 4, padding: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ color: COLORS.text, fontSize: 12 }}>{t.thema}</span>
+                    <span style={{ color: COLORS.textDim, fontSize: 10 }}>{t.artikel_count}</span>
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-valuenow={rate}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Freigaberate ${t.thema}`}
+                    style={{ height: 3, background: COLORS.border, borderRadius: 2 }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        borderRadius: 2,
+                        background: COLORS.accent,
+                        width: `${rate}%`,
+                      }}
+                    />
+                  </div>
+                  <div style={{ color: COLORS.textDim, fontSize: 10, marginTop: 4 }}>
+                    {rate}% Freigabe
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -134,35 +137,47 @@ export default function ArchiveScreen() {
         >
           Zuletzt publiziert
         </h2>
-        {RECENT.map((item) => (
-          <article
-            key={item.title}
-            style={{
-              background: COLORS.surface,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 6,
-              padding: "14px 16px",
-              marginBottom: 8,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <div style={{ color: COLORS.text, fontSize: 13, marginBottom: 4 }}>{item.title}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Badge label="DE EN ES FR" color="muted" />
-                <Badge label={item.cat} color="muted" />
+        {articlesLoading && articles.length === 0 && (
+          <div style={{ textAlign: "center", padding: 20 }}>
+            <Spinner size={14} label="Lade Artikel" />
+          </div>
+        )}
+        {articles.map((item) => {
+          const langStr = item.sprachen
+            ? Object.entries(item.sprachen)
+                .filter(([, v]) => v)
+                .map(([k]) => k.toUpperCase())
+                .join(" ")
+            : "";
+          return (
+            <article
+              key={item.id}
+              style={{
+                background: COLORS.surface,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 6,
+                padding: "14px 16px",
+                marginBottom: 8,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <div style={{ color: COLORS.text, fontSize: 13, marginBottom: 4 }}>{item.titel}</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {langStr && <Badge label={langStr} color="muted" />}
+                  {item.kategorie && <Badge label={item.kategorie} color="muted" />}
+                </div>
               </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ color: COLORS.green, fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
-                {item.score}
+              <div style={{ textAlign: "right" }}>
+                <div style={{ color: COLORS.textDim, fontSize: 10 }}>
+                  {item.trigger_typ}
+                </div>
               </div>
-              <div style={{ color: COLORS.textDim, fontSize: 10 }}>Score</div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </div>
   );

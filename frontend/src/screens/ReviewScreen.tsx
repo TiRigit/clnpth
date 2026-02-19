@@ -1,55 +1,126 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccessibility } from "../hooks/useAccessibility";
+import { useArticleDetail } from "../hooks/useArticles";
+import { useTranslations } from "../hooks/useTranslations";
+import { useImage } from "../hooks/useImage";
+import { api } from "../api/client";
 import { COLORS } from "../styles/tokens";
-import type { Language, Source, SupervisorResult, ImageResult } from "../types";
+import type { Language, Source } from "../types";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
 import Spinner from "../components/Spinner";
 
-const DEMO_ARTICLE = {
-  title: "EU AI Act 2026: Was Verlage jetzt wissen m\u00fcssen",
-  lead: "Mit dem vollst\u00e4ndigen Inkrafttreten des EU AI Acts stehen Medienh\u00e4user und Kleinverlage vor konkreten Compliance-Anforderungen \u2014 besonders bei KI-gest\u00fctzter \u00dcbersetzung und automatisierter Inhaltserstellung.",
-  body: "Der EU AI Act klassifiziert redaktionelle KI-Systeme in der Regel als Anwendungen mit niedrigem Risiko (Art. 6 Abs. 2). Dennoch gelten f\u00fcr automatisiert erstellte oder \u00fcbersetzte Inhalte Transparenzpflichten, die viele Verlage noch nicht umgesetzt haben.\n\nBesonders kritisch: die Kennzeichnungspflicht f\u00fcr KI-generierte Bilder und Texte, die seit Februar 2026 in Kraft ist. Wer Inhalte ohne entsprechende Metadaten (IPTC, C2PA) publiziert, riskiert Bu\u00dfgelder bis zu 15 Millionen Euro oder 3 % des weltweiten Jahresumsatzes.\n\nF\u00fcr die \u00dcbersetzungsbranche bedeutet das: DeepL und vergleichbare EU-Anbieter sind konform, solange die Ausgabe als maschinell \u00fcbersetzt gekennzeichnet wird. Eine redaktionelle Nachbearbeitung \u2014 etwa durch Mistral-basierte Review-Agenten \u2014 kann als menschliche Kontrolle gelten und die Kennzeichnungspflicht abschw\u00e4chen.",
-  sources: [
-    { title: "EU AI Act Volltext (EUR-Lex)", url: "https://eur-lex.europa.eu/...", auto: true },
-    { title: "Bericht Q1 2026 (internes Dokument)", url: null, auto: true },
-    { title: "Interview Notizen (Attachment)", url: null, auto: true },
-  ] as Source[],
-  supervisor: {
-    score: 87,
-    recommendation: "freigeben",
-    reasoning:
-      "Artikel entspricht dem Tonality-Profil (sachlich-kritisch, konstruktiv). Struktur und L\u00e4nge im Normbereich. Quellen vollst\u00e4ndig. Einziger Hinweis: Absatz 3 verwendet \u2018riskiert\u2019 \u2014 im Profil leicht unter dem Durchschnitt f\u00fcr juristische Themen. Empfehle Freigabe.",
-    tonalityTags: ["sachlich", "kritisch", "konstruktiv"],
-    flags: [],
-  } as SupervisorResult,
-  translations: {
-    en: { titel: "EU AI Act 2026: What Publishers Need to Know Now", ready: true },
-    es: { titel: "EU AI Act 2026: Lo que los editores deben saber ahora", ready: true },
-    fr: { titel: "EU AI Act 2026: Ce que les \u00e9diteurs doivent savoir", ready: true },
-  },
-  image: {
-    prompt:
-      "Editorial illustration: EU regulation document transforming into digital content streams, clean geometric style, muted blue-grey palette",
-    url: null,
-    status: "ready",
-    altTexts: {},
-  } as ImageResult,
-};
-
 const LANG_LABELS: Record<Language, string> = { de: "DE", en: "EN", es: "ES", fr: "FR" };
 const LANGS: Language[] = ["de", "en", "es", "fr"];
 
-export default function ReviewScreen() {
+interface ReviewScreenProps {
+  articleId: number;
+}
+
+export default function ReviewScreen({ articleId }: ReviewScreenProps) {
   const [activeLang, setActiveLang] = useState<Language>("de");
   const { minTarget } = useAccessibility();
-  const [editedTitle, setEditedTitle] = useState(DEMO_ARTICLE.title);
-  const [editedBody, setEditedBody] = useState(DEMO_ARTICLE.body);
-  const [editedLead, setEditedLead] = useState(DEMO_ARTICLE.lead);
-  const [sources, setSources] = useState(DEMO_ARTICLE.sources);
+  const { article, loading: articleLoading, error: articleError } = useArticleDetail(articleId);
+  const { translations } = useTranslations(articleId);
+  const { image, trigger: triggerImage } = useImage(articleId);
+
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedBody, setEditedBody] = useState("");
+  const [editedLead, setEditedLead] = useState("");
+  const [sources, setSources] = useState<Source[]>([]);
   const [feedback, setFeedback] = useState("");
   const [decision, setDecision] = useState<"publish" | "revise" | null>(null);
-  const [imgStatus, setImgStatus] = useState<"ready" | "generating">("ready");
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Build translations map: lang -> translation
+  const translationMap = translations.reduce<Record<string, { titel: string | null; lead: string | null; body: string | null; ready: boolean }>>(
+    (acc, t) => {
+      acc[t.sprache] = {
+        titel: t.titel,
+        lead: t.lead,
+        body: t.body,
+        ready: t.status === "approved" || t.status === "reviewed",
+      };
+      return acc;
+    },
+    {}
+  );
+
+  // Initialize editor state from article data
+  useEffect(() => {
+    if (article) {
+      setEditedTitle(article.titel);
+      setEditedBody(article.body ?? "");
+      setEditedLead(article.lead ?? "");
+      const mappedSources = (article.quellen ?? []).map((q: unknown) => {
+        if (typeof q === "object" && q !== null) {
+          const obj = q as Record<string, unknown>;
+          return {
+            title: String(obj.title ?? obj.titel ?? ""),
+            url: typeof obj.url === "string" ? obj.url : null,
+            auto: Boolean(obj.auto ?? true),
+          };
+        }
+        return { title: String(q), url: null, auto: true };
+      });
+      setSources(mappedSources);
+    }
+  }, [article]);
+
+  // Supervisor data
+  const supervisor = article?.supervisor;
+  const supervisorScore = supervisor?.supervisor_score ?? null;
+  const supervisorRec = supervisor?.supervisor_empfehlung ?? null;
+  const supervisorReasoning = supervisor?.supervisor_begruendung ?? "";
+  const tonalityTags = supervisor?.tonality_tags ?? [];
+  const isApproved = supervisorRec === "freigeben";
+
+  const handleApprove = async () => {
+    setActionLoading(true);
+    try {
+      await api.articles.approve(articleId, feedback || undefined);
+      setDecision("publish");
+    } catch {
+      // silent
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRevise = async () => {
+    setActionLoading(true);
+    try {
+      await api.articles.revise(articleId, feedback || undefined);
+      setDecision("revise");
+    } catch {
+      // silent
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRegenImage = () => {
+    const prompt = image.bild_prompt ?? editedTitle;
+    triggerImage(prompt, "illustration");
+  };
+
+  if (articleLoading) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Spinner size={20} label="Artikel wird geladen" />
+      </div>
+    );
+  }
+
+  if (articleError || !article) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center", color: COLORS.red, fontSize: 13 }}>
+          {articleError ?? "Artikel nicht gefunden"}
+        </div>
+      </div>
+    );
+  }
 
   if (decision)
     return (
@@ -111,7 +182,7 @@ export default function ReviewScreen() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <Badge label="Zur Freigabe" color="yellow" />
-              <Badge label="Technologie" color="muted" />
+              {article.kategorie && <Badge label={article.kategorie} color="muted" />}
               <Badge label="KI-generiert" color="muted" />
             </div>
             <input
@@ -134,10 +205,10 @@ export default function ReviewScreen() {
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0, marginLeft: 20 }}>
             <Button>Vorschau</Button>
-            <Button variant="danger" onClick={() => setDecision("revise")}>
+            <Button variant="danger" onClick={handleRevise} disabled={actionLoading}>
               \u00dcberarbeiten
             </Button>
-            <Button variant="success" onClick={() => setDecision("publish")}>
+            <Button variant="success" onClick={handleApprove} disabled={actionLoading}>
               \u2713 Freigeben
             </Button>
           </div>
@@ -159,7 +230,7 @@ export default function ReviewScreen() {
               }}
             >
               {LANGS.map((l) => {
-                const trans = DEMO_ARTICLE.translations[l as Exclude<Language, "de">];
+                const trans = translationMap[l];
                 return (
                   <button
                     key={l}
@@ -237,8 +308,7 @@ export default function ReviewScreen() {
                 value={
                   activeLang === "de"
                     ? editedLead
-                    : (DEMO_ARTICLE.translations[activeLang as Exclude<Language, "de">]?.titel ??
-                        "") + " \u2014 \u00dcbersetzung Lead\u2026"
+                    : (translationMap[activeLang]?.lead ?? translationMap[activeLang]?.titel ?? "")
                 }
                 onChange={(e) => activeLang === "de" && setEditedLead(e.target.value)}
                 style={{
@@ -321,7 +391,7 @@ export default function ReviewScreen() {
                 value={
                   activeLang === "de"
                     ? editedBody
-                    : `${DEMO_ARTICLE.translations[activeLang as Exclude<Language, "de">]?.titel ?? ""}\n\n[\u00dcbersetzung via DeepL + Mistral Review \u2014 vollst\u00e4ndiger Text hier]`
+                    : (translationMap[activeLang]?.body ?? "")
                 }
                 onChange={(e) => activeLang === "de" && setEditedBody(e.target.value)}
                 style={{
@@ -439,12 +509,9 @@ export default function ReviewScreen() {
               role="region"
               aria-label="Supervisor-Empfehlung"
               style={{
-                background:
-                  DEMO_ARTICLE.supervisor.recommendation === "freigeben"
-                    ? COLORS.greenDim
-                    : COLORS.yellowDim,
+                background: isApproved ? COLORS.greenDim : COLORS.yellowDim,
                 border: `1px solid ${
-                  DEMO_ARTICLE.supervisor.recommendation === "freigeben"
+                  isApproved
                     ? "rgba(76,175,125,0.3)"
                     : "rgba(212,168,67,0.3)"
                 }`,
@@ -474,29 +541,43 @@ export default function ReviewScreen() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ color: COLORS.textMuted, fontSize: 11 }}>Score</span>
                   <span
-                    aria-label={`Score: ${DEMO_ARTICLE.supervisor.score} von 100`}
-                    style={{ color: COLORS.green, fontSize: 18, fontWeight: 600 }}
+                    aria-label={supervisorScore !== null ? `Score: ${supervisorScore} von 100` : "Kein Score"}
+                    style={{
+                      color: supervisorScore !== null && supervisorScore >= 70 ? COLORS.green : COLORS.yellow,
+                      fontSize: 18,
+                      fontWeight: 600,
+                    }}
                   >
-                    {DEMO_ARTICLE.supervisor.score}
+                    {supervisorScore ?? "\u2014"}
                   </span>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                 <span aria-hidden="true" style={{ fontSize: 14 }}>
-                  \u2713
+                  {isApproved ? "\u2713" : "\u2260"}
                 </span>
-                <span style={{ color: COLORS.green, fontSize: 12, fontWeight: 600 }}>
-                  Empfehlung: Freigeben
+                <span
+                  style={{
+                    color: isApproved ? COLORS.green : COLORS.yellow,
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  Empfehlung: {supervisorRec ?? "ausstehend"}
                 </span>
               </div>
-              <p style={{ color: COLORS.textMuted, fontSize: 11, lineHeight: 1.6, marginBottom: 10 }}>
-                {DEMO_ARTICLE.supervisor.reasoning}
-              </p>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {DEMO_ARTICLE.supervisor.tonalityTags.map((t) => (
-                  <Badge key={t} label={t} color="muted" />
-                ))}
-              </div>
+              {supervisorReasoning && (
+                <p style={{ color: COLORS.textMuted, fontSize: 11, lineHeight: 1.6, marginBottom: 10 }}>
+                  {supervisorReasoning}
+                </p>
+              )}
+              {tonalityTags.length > 0 && (
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {tonalityTags.map((t) => (
+                    <Badge key={t} label={t} color="muted" />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Image preview */}
@@ -529,26 +610,33 @@ export default function ReviewScreen() {
                   Beitragsbild
                 </span>
                 <Badge
-                  label={imgStatus === "ready" ? "Bereit" : "Generiert\u2026"}
-                  color={imgStatus === "ready" ? "green" : "yellow"}
+                  label={image.status === "ready" ? "Bereit" : image.status === "generating" ? "Generiert\u2026" : "Ausstehend"}
+                  color={image.status === "ready" ? "green" : image.status === "generating" ? "yellow" : "muted"}
                 />
               </div>
               <div
                 style={{
                   height: 140,
-                  background: "linear-gradient(135deg, #1a2035 0%, #1e2d4a 50%, #1a2a3a 100%)",
+                  background: image.bild_url
+                    ? `url(${image.bild_url}) center/cover`
+                    : "linear-gradient(135deg, #1a2035 0%, #1e2d4a 50%, #1a2a3a 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   position: "relative",
                 }}
               >
-                <div style={{ textAlign: "center" }}>
-                  <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 4, opacity: 0.4 }}>
-                    \u25C8
+                {!image.bild_url && (
+                  <div style={{ textAlign: "center" }}>
+                    <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 4, opacity: 0.4 }}>
+                      {image.status === "generating" ? "" : "\u25C8"}
+                    </div>
+                    <div style={{ color: COLORS.textDim, fontSize: 10 }}>
+                      {image.status === "generating" ? "Wird generiert\u2026" : "Illustration"}
+                    </div>
+                    {image.status === "generating" && <Spinner size={16} />}
                   </div>
-                  <div style={{ color: COLORS.textDim, fontSize: 10 }}>Illustration</div>
-                </div>
+                )}
                 <div
                   style={{
                     position: "absolute",
@@ -569,7 +657,7 @@ export default function ReviewScreen() {
                 <div
                   style={{ color: COLORS.textMuted, fontSize: 10, lineHeight: 1.5, marginBottom: 10 }}
                 >
-                  {DEMO_ARTICLE.image.prompt}
+                  {image.bild_prompt ?? "Kein Prompt"}
                 </div>
                 <Button
                   style={{
@@ -578,7 +666,8 @@ export default function ReviewScreen() {
                     justifyContent: "center",
                     display: "flex",
                   }}
-                  onClick={() => setImgStatus("generating")}
+                  onClick={handleRegenImage}
+                  disabled={image.status === "generating"}
                 >
                   \u21BA Neu generieren
                 </Button>
@@ -624,7 +713,7 @@ export default function ReviewScreen() {
                     {editedTitle.substring(0, 55)}&hellip;
                   </div>
                   <div style={{ color: "#5f9e6e", fontSize: 10, marginBottom: 4 }}>
-                    meine-seite.de &rsaquo; technologie
+                    meine-seite.de &rsaquo; {(article.kategorie ?? "artikel").toLowerCase()}
                   </div>
                   <div style={{ color: COLORS.textMuted, fontSize: 11, lineHeight: 1.5 }}>
                     {editedLead.substring(0, 100)}&hellip;
@@ -687,14 +776,16 @@ export default function ReviewScreen() {
                 <div style={{ display: "flex", gap: 8 }}>
                   <Button
                     variant="danger"
-                    onClick={() => setDecision("revise")}
+                    onClick={handleRevise}
+                    disabled={actionLoading}
                     style={{ flex: 1, justifyContent: "center", display: "flex" }}
                   >
                     \u00dcberarbeiten
                   </Button>
                   <Button
                     variant="success"
-                    onClick={() => setDecision("publish")}
+                    onClick={handleApprove}
+                    disabled={actionLoading}
                     style={{ flex: 1, justifyContent: "center", display: "flex" }}
                   >
                     \u2713 Freigeben

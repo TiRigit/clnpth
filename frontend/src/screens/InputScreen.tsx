@@ -1,5 +1,6 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { useAccessibility } from "../hooks/useAccessibility";
+import { useCreateArticle } from "../hooks/useArticles";
 import { COLORS } from "../styles/tokens";
 import type { TriggerType } from "../types";
 import Button from "../components/Button";
@@ -23,11 +24,6 @@ interface Attachment {
   type: string;
 }
 
-const DEMO_ATTACHMENTS: Attachment[] = [
-  { name: "bericht_q1_2026.pdf", size: "2.3 MB", type: "pdf" },
-  { name: "interview_notizen.txt", size: "18 KB", type: "txt" },
-];
-
 interface InputScreenProps {
   onSubmit: () => void;
 }
@@ -36,21 +32,27 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
   const [trigger, setTrigger] = useState<TriggerType>("prompt");
   const { minTarget } = useAccessibility();
   const [text, setText] = useState("");
-  const [attachments, setAttachments] = useState<Attachment[]>(DEMO_ATTACHMENTS);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [urls, setUrls] = useState([""]);
   const [category, setCategory] = useState("Technologie");
   const [langs, setLangs] = useState({ de: true, en: true, es: true, fr: true });
   const [imageType, setImageType] = useState("Illustration");
-  const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { create, submitting, error } = useCreateArticle();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!text.trim() && trigger === "prompt") return;
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    const result = await create({
+      trigger_typ: trigger,
+      text,
+      kategorie: category,
+      sprachen: langs,
+      urls: urls.filter((u) => u.trim()),
+      bild_typ: imageType.toLowerCase(),
+    });
+    if (result) {
       onSubmit();
-    }, 2200);
+    }
   };
 
   const toggleLang = (l: string) =>
@@ -599,6 +601,24 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                 "\u2726 Artikel generieren"
               )}
             </Button>
+
+            {/* Error */}
+            {error && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  background: "rgba(224,90,78,0.1)",
+                  borderRadius: 6,
+                  border: "1px solid rgba(224,90,78,0.3)",
+                  color: COLORS.red,
+                  fontSize: 11,
+                }}
+              >
+                {error}
+              </div>
+            )}
 
             {/* Progress */}
             {submitting && (

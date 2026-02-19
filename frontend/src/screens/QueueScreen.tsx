@@ -1,27 +1,12 @@
+import { useState } from "react";
 import { COLORS } from "../styles/tokens";
 import { useAccessibility } from "../hooks/useAccessibility";
-import type { ArticleStatus, TriggerType } from "../types";
+import { useArticleList, useQueueStats } from "../hooks/useArticles";
+import { timeAgo } from "../utils/timeAgo";
+import type { ArticleStatus } from "../types";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
 import Spinner from "../components/Spinner";
-
-interface QueueItem {
-  id: number;
-  title: string;
-  status: ArticleStatus;
-  langs: number;
-  score: number | null;
-  trigger: TriggerType;
-  ago: string;
-}
-
-const QUEUE_ITEMS: QueueItem[] = [
-  { id: 1, title: "EU AI Act 2026: Was Verlage wissen m\u00fcssen", status: "review", langs: 4, score: 87, trigger: "prompt", ago: "vor 3 Min." },
-  { id: 2, title: "Mistral Large 3 im Praxistest", status: "generating", langs: 4, score: null, trigger: "rss", ago: "vor 12 Min." },
-  { id: 3, title: "Open Source AI Tools f\u00fcr Redaktionen", status: "translating", langs: 3, score: null, trigger: "url", ago: "vor 28 Min." },
-  { id: 4, title: "DeepL vs. Google Translate 2026", status: "published", langs: 4, score: 92, trigger: "calendar", ago: "vor 2 Std." },
-  { id: 5, title: "DSGVO und KI-Bildgenerierung", status: "rejected", langs: 0, score: 41, trigger: "prompt", ago: "gestern" },
-];
 
 const STATUS_MAP: Record<ArticleStatus, { label: string; color: "yellow" | "blue" | "green" | "red" }> = {
   review: { label: "Freigabe ausstehend", color: "yellow" },
@@ -31,14 +16,36 @@ const STATUS_MAP: Record<ArticleStatus, { label: string; color: "yellow" | "blue
   rejected: { label: "Abgelehnt", color: "red" },
 };
 
-const FILTERS = ["Alle", "Freigabe", "In Arbeit", "Publiziert"];
+type FilterKey = "all" | "review" | "working" | "published";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "Alle" },
+  { key: "review", label: "Freigabe" },
+  { key: "working", label: "In Arbeit" },
+  { key: "published", label: "Publiziert" },
+];
+
+const FILTER_TO_STATUS: Record<FilterKey, string | undefined> = {
+  all: undefined,
+  review: "review",
+  working: "generating",
+  published: "published",
+};
 
 interface QueueScreenProps {
-  onOpenReview: () => void;
+  onOpenReview: (id: number) => void;
 }
 
 export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
-  const { minTarget } = useAccessibility();
+  useAccessibility();
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const { articles, loading } = useArticleList(FILTER_TO_STATUS[activeFilter]);
+  const { stats } = useQueueStats();
+
+  const subtitle = stats
+    ? `${stats.total} Artikel \u00b7 ${stats.review} zur Freigabe`
+    : "Lade\u2026";
+
   return (
     <div style={{ flex: 1, overflow: "auto", padding: 32 }} className="anim-fade">
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -55,17 +62,18 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
               Warteschlange
             </h1>
             <p style={{ color: COLORS.textMuted, fontSize: 12 }}>
-              5 Artikel &middot; 1 zur Freigabe
+              {subtitle}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }} role="toolbar" aria-label="Filter">
             {FILTERS.map((f) => (
               <Button
-                key={f}
-                variant={f === "Alle" ? "primary" : "ghost"}
+                key={f.key}
+                variant={activeFilter === f.key ? "primary" : "ghost"}
+                onClick={() => setActiveFilter(f.key)}
                 style={{ padding: "6px 12px", fontSize: 11 }}
               >
-                {f}
+                {f.label}
               </Button>
             ))}
           </div>
@@ -103,28 +111,42 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
           </div>
 
           <div role="table" aria-label="Artikel-Warteschlange">
-            {QUEUE_ITEMS.map((item, i) => {
-              const s = STATUS_MAP[item.status];
-              const isClickable = item.status === "review";
+            {loading && articles.length === 0 && (
+              <div style={{ padding: 32, textAlign: "center" }}>
+                <Spinner size={16} label="Lade Artikel" />
+              </div>
+            )}
+            {!loading && articles.length === 0 && (
+              <div style={{ padding: 32, textAlign: "center", color: COLORS.textDim, fontSize: 12 }}>
+                Keine Artikel gefunden.
+              </div>
+            )}
+            {articles.map((item, i) => {
+              const status = (item.status as ArticleStatus) || "generating";
+              const s = STATUS_MAP[status] ?? { label: item.status, color: "muted" as const };
+              const isClickable = status === "review";
+              const langCount = item.sprachen
+                ? Object.values(item.sprachen).filter(Boolean).length
+                : 0;
               return (
                 <div
                   key={item.id}
                   role="row"
                   tabIndex={isClickable ? 0 : undefined}
-                  onClick={() => isClickable && onOpenReview()}
+                  onClick={() => isClickable && onOpenReview(item.id)}
                   onKeyDown={(e) => {
                     if (isClickable && (e.key === "Enter" || e.key === " ")) {
                       e.preventDefault();
-                      onOpenReview();
+                      onOpenReview(item.id);
                     }
                   }}
-                  aria-label={`${item.title}, Status: ${s.label}${item.score ? `, Score: ${item.score}` : ""}`}
+                  aria-label={`${item.titel}, Status: ${s.label}`}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 160px 80px 80px 80px 100px",
                     padding: "14px 16px",
                     borderBottom:
-                      i < QUEUE_ITEMS.length - 1 ? `1px solid ${COLORS.border}` : "none",
+                      i < articles.length - 1 ? `1px solid ${COLORS.border}` : "none",
                     cursor: isClickable ? "pointer" : "default",
                     background: isClickable ? COLORS.accentGlow : "transparent",
                     transition: "background 0.15s",
@@ -133,9 +155,9 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
                 >
                   <div>
                     <div style={{ color: COLORS.text, fontSize: 13, marginBottom: 2 }}>
-                      {item.title}
+                      {item.titel}
                     </div>
-                    {item.status === "generating" && (
+                    {status === "generating" && (
                       <div
                         style={{
                           display: "flex",
@@ -149,7 +171,7 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
                         erstellt&hellip;
                       </div>
                     )}
-                    {item.status === "translating" && (
+                    {status === "translating" && (
                       <div
                         style={{
                           display: "flex",
@@ -159,8 +181,8 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
                           fontSize: 10,
                         }}
                       >
-                        <Spinner size={9} label="\u00dcbersetzung l\u00e4uft" /> EN \u2713 &middot;
-                        ES l&auml;uft &middot; FR wartet
+                        <Spinner size={9} label="\u00dcbersetzung l\u00e4uft" /> \u00dcbersetzung
+                        l&auml;uft&hellip;
                       </div>
                     )}
                   </div>
@@ -168,26 +190,17 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
                     <Badge label={s.label} color={s.color} />
                   </div>
                   <div style={{ color: COLORS.textMuted, fontSize: 12 }}>
-                    {item.langs > 0 ? `${item.langs} \u00d7` : "\u2014"}
+                    {langCount > 0 ? `${langCount} \u00d7` : "\u2014"}
                   </div>
-                  <div
-                    style={{
-                      color:
-                        item.score !== null && item.score >= 80
-                          ? COLORS.green
-                          : item.score !== null && item.score >= 60
-                            ? COLORS.yellow
-                            : COLORS.red,
-                      fontSize: 13,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {item.score ?? "\u2014"}
+                  <div style={{ color: COLORS.textDim, fontSize: 13 }}>
+                    {"\u2014"}
                   </div>
                   <div>
-                    <Badge label={item.trigger} color="muted" />
+                    <Badge label={item.trigger_typ} color="muted" />
                   </div>
-                  <div style={{ color: COLORS.textDim, fontSize: 11 }}>{item.ago}</div>
+                  <div style={{ color: COLORS.textDim, fontSize: 11 }}>
+                    {timeAgo(item.erstellt_am)}
+                  </div>
                 </div>
               );
             })}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { api, PublishStatus } from "../api/client";
+import { api, type PublishStatus } from "../api/client";
 
 export function usePublish(articleId: number | null) {
   const [status, setStatus] = useState<PublishStatus | null>(null);

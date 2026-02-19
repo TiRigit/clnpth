@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   api,
-  SupervisorDashboard,
-  TonalityEntry,
-  TopicRanking,
-  DeviationStats,
+  type SupervisorDashboard,
 } from "../api/client";
 
 export function useSupervisorDashboard() {

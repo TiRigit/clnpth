@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   api,
-  ArticleListItem,
-  ArticleDetail,
-  QueueStats,
-  CreateArticlePayload,
+  type ArticleListItem,
+  type ArticleDetail,
+  type QueueStats,
+  type CreateArticlePayload,
 } from "../api/client";
 
 export function useArticleList(statusFilter?: string) {

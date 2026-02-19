@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { api, TranslationResponse } from "../api/client";
+import { api, type TranslationResponse } from "../api/client";
 
 export function useTranslations(articleId: number | null) {
   const [translations, setTranslations] = useState<TranslationResponse[]>([]);
