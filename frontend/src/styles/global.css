@@ -1,0 +1,161 @@
+/* Lokale Schriften (DSGVO-konform, keine Google Fonts CDN) */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/playfair-display-v37-latin-regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/playfair-display-v37-latin-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/playfair-display-v37-latin-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-v18-latin-300.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-v18-latin-regular.woff2') format('woff2');
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Base */
+:root {
+  --color-bg: #0f0f0f;
+  --color-surface: #161616;
+  --color-surface-high: #1e1e1e;
+  --color-border: #2a2a2a;
+  --color-border-hot: #3d3d3d;
+  --color-accent: #c8a96e;
+  --color-accent-dim: #9a7d4a;
+  --color-accent-glow: rgba(200,169,110,0.12);
+  --color-text: #e8e4dc;
+  --color-text-muted: #7a7570;
+  --color-text-dim: #4a4642;
+  --color-green: #4caf7d;
+  --color-red: #e05a4e;
+  --color-blue: #5a8fc8;
+  --color-yellow: #d4a843;
+  --font-serif: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  font-size: 16px;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* Focus visible — Accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip navigation — Accessibility */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: 600;
+  border-radius: 0 0 4px 4px;
+  transition: top 0.2s;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: high) {
+  :root {
+    --color-text: #ffffff;
+    --color-border: #555555;
+    --color-border-hot: #888888;
+    --color-text-muted: #cccccc;
+    --color-text-dim: #999999;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.anim-fade {
+  animation: fadeIn 0.35s ease forwards;
+}
+
+/* Utility */
+.serif {
+  font-family: var(--font-serif);
+}
