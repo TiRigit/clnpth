@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAccessibility } from "../hooks/useAccessibility";
 import { COLORS } from "../styles/tokens";
 import type { Language, Source, SupervisorResult, ImageResult } from "../types";
 import Badge from "../components/Badge";
@@ -41,6 +42,7 @@ const LANGS: Language[] = ["de", "en", "es", "fr"];
 
 export default function ReviewScreen() {
   const [activeLang, setActiveLang] = useState<Language>("de");
+  const { minTarget } = useAccessibility();
   const [editedTitle, setEditedTitle] = useState(DEMO_ARTICLE.title);
   const [editedBody, setEditedBody] = useState(DEMO_ARTICLE.body);
   const [editedLead, setEditedLead] = useState(DEMO_ARTICLE.lead);
@@ -179,7 +181,7 @@ export default function ReviewScreen() {
                       alignItems: "center",
                       gap: 6,
                       fontFamily: "inherit",
-                      minHeight: 44,
+                      minHeight: minTarget || undefined,
                     }}
                   >
                     {LANG_LABELS[l]}
@@ -395,7 +397,7 @@ export default function ReviewScreen() {
                         fontFamily: "inherit",
                         fontSize: 12,
                         outline: "none",
-                        minHeight: 44,
+                        minHeight: minTarget || undefined,
                       }}
                     />
                     <button
@@ -407,8 +409,8 @@ export default function ReviewScreen() {
                         background: "none",
                         border: "none",
                         fontSize: 14,
-                        minWidth: 44,
-                        minHeight: 44,
+                        minWidth: minTarget || undefined,
+                        minHeight: minTarget || undefined,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",

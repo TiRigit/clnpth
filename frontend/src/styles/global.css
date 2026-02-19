@@ -4,35 +4,35 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/playfair-display-v37-latin-regular.woff2') format('woff2');
+  src: url('/fonts/playfair-display-regular.ttf') format('truetype');
 }
 @font-face {
   font-family: 'Playfair Display';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/playfair-display-v37-latin-600.woff2') format('woff2');
+  src: url('/fonts/playfair-display-600.ttf') format('truetype');
 }
 @font-face {
   font-family: 'Playfair Display';
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/playfair-display-v37-latin-italic.woff2') format('woff2');
+  src: url('/fonts/playfair-display-italic.ttf') format('truetype');
 }
 @font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-v18-latin-300.woff2') format('woff2');
+  src: url('/fonts/jetbrains-mono-300.ttf') format('truetype');
 }
 @font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-v18-latin-regular.woff2') format('woff2');
+  src: url('/fonts/jetbrains-mono-400.ttf') format('truetype');
 }
 
 /* Reset */
@@ -61,6 +61,8 @@
   --color-yellow: #d4a843;
   --font-serif: 'Playfair Display', serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --min-target: 44px;
+  --spacing-mult: 1;
   font-size: 16px;
 }
 
@@ -79,17 +81,27 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 
-/* Focus visible — Accessibility */
-:focus-visible {
+/* ═══════════════════════════════════════════════════════════
+   BARRIEREARM (Default) — .a11y-accessible auf <html>
+   ═══════════════════════════════════════════════════════════ */
+
+/* Focus visible — nur im barrierearmem Modus prominent */
+.a11y-accessible :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* Im Kompaktmodus: subtiler Focus */
+.a11y-compact :focus-visible {
+  outline: 1px solid var(--color-border-hot);
+  outline-offset: 1px;
 }
 
 :focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Skip navigation — Accessibility */
+/* Skip navigation — nur im barrierearmem Modus sichtbar */
 .skip-link {
   position: absolute;
   top: -100%;
@@ -101,9 +113,13 @@ body {
   font-weight: 600;
   border-radius: 0 0 4px 4px;
   transition: top 0.2s;
+  text-decoration: none;
 }
-.skip-link:focus {
+.a11y-accessible .skip-link:focus {
   top: 0;
+}
+.a11y-compact .skip-link {
+  display: none;
 }
 
 /* Screen reader only */
@@ -118,6 +134,49 @@ body {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* Kompaktmodus: kleinere Targets, weniger Padding */
+.a11y-compact {
+  --min-target: 0px;
+  --spacing-mult: 0.75;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FARBENBLIND-MODUS — .a11y-colorblind auf <html>
+   Verwendet Muster/Raender zusaetzlich zu Farben
+   ═══════════════════════════════════════════════════════════ */
+
+/* Farbenblind: Status-Punkte bekommen Randmuster */
+.a11y-colorblind [data-cb-status="success"] {
+  border: 2px solid currentColor !important;
+  border-style: solid !important;
+}
+.a11y-colorblind [data-cb-status="warning"] {
+  border: 2px dashed currentColor !important;
+}
+.a11y-colorblind [data-cb-status="error"] {
+  border: 2px dotted currentColor !important;
+}
+.a11y-colorblind [data-cb-status="info"] {
+  border: 2px double currentColor !important;
+}
+
+/* Farbenblind: Fortschrittsbalken mit Pattern-Overlay */
+.a11y-colorblind [role="progressbar"] > div {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(255,255,255,0.15) 3px,
+    rgba(255,255,255,0.15) 6px
+  ) !important;
+}
+
+/* Farbenblind: Badges mit Icon-Prefix */
+.a11y-colorblind [data-cb-badge="green"]::before { content: "\2713 "; }
+.a11y-colorblind [data-cb-badge="red"]::before { content: "\2717 "; }
+.a11y-colorblind [data-cb-badge="yellow"]::before { content: "\26A0 "; }
+.a11y-colorblind [data-cb-badge="blue"]::before { content: "\2139 "; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ScreenId } from "./types";
+import { AccessibilityContext, useAccessibilityProvider } from "./hooks/useAccessibility";
 import Nav from "./components/Nav";
 import InputScreen from "./screens/InputScreen";
 import ReviewScreen from "./screens/ReviewScreen";
@@ -9,13 +10,14 @@ import SupervisorScreen from "./screens/SupervisorScreen";
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenId>("input");
+  const a11y = useAccessibilityProvider();
 
   const handleSubmit = () => setScreen("queue");
 
   const counts: Partial<Record<ScreenId, number>> = { review: 1, queue: 3 };
 
   return (
-    <>
+    <AccessibilityContext.Provider value={a11y}>
       <a href="#main-content" className="skip-link">
         Zum Hauptinhalt
       </a>
@@ -38,6 +40,6 @@ export default function App() {
           {screen === "supervisor" && <SupervisorScreen />}
         </main>
       </div>
-    </>
+    </AccessibilityContext.Provider>
   );
 }

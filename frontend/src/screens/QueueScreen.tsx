@@ -1,4 +1,5 @@
 import { COLORS } from "../styles/tokens";
+import { useAccessibility } from "../hooks/useAccessibility";
 import type { ArticleStatus, TriggerType } from "../types";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
@@ -37,6 +38,7 @@ interface QueueScreenProps {
 }
 
 export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
+  const { minTarget } = useAccessibility();
   return (
     <div style={{ flex: 1, overflow: "auto", padding: 32 }} className="anim-fade">
       <div style={{ maxWidth: 900, margin: "0 auto" }}>

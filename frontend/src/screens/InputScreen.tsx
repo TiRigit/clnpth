@@ -1,4 +1,5 @@
 import { useState, useRef, type ChangeEvent } from "react";
+import { useAccessibility } from "../hooks/useAccessibility";
 import { COLORS } from "../styles/tokens";
 import type { TriggerType } from "../types";
 import Button from "../components/Button";
@@ -33,6 +34,7 @@ interface InputScreenProps {
 
 export default function InputScreen({ onSubmit }: InputScreenProps) {
   const [trigger, setTrigger] = useState<TriggerType>("prompt");
+  const { minTarget } = useAccessibility();
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>(DEMO_ATTACHMENTS);
   const [urls, setUrls] = useState([""]);
@@ -132,7 +134,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                   transition: "all 0.15s",
                   fontSize: 12,
                   fontFamily: "inherit",
-                  minHeight: 44,
+                  minHeight: minTarget || undefined,
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: 10 }}>
@@ -234,7 +236,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                         fontFamily: "inherit",
                         fontSize: 12,
                         outline: "none",
-                        minHeight: 44,
+                        minHeight: minTarget || undefined,
                       }}
                     />
                     {i === urls.length - 1 && (
@@ -342,8 +344,8 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                           background: "none",
                           border: "none",
                           fontFamily: "inherit",
-                          minWidth: 44,
-                          minHeight: 44,
+                          minWidth: minTarget || undefined,
+                          minHeight: minTarget || undefined,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -405,7 +407,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                       border: "none",
                       fontFamily: "inherit",
                       textAlign: "left",
-                      minHeight: 44,
+                      minHeight: minTarget || undefined,
                     }}
                   >
                     {c}
@@ -468,7 +470,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                       background: "transparent",
                       border: "none",
                       fontFamily: "inherit",
-                      minHeight: 44,
+                      minHeight: minTarget || undefined,
                     }}
                   >
                     <span
@@ -546,7 +548,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                       cursor: "pointer",
                       fontFamily: "inherit",
                       padding: "4px 0",
-                      minHeight: 44,
+                      minHeight: minTarget || undefined,
                       width: "100%",
                     }}
                   >

@@ -1,5 +1,6 @@
 import { useState, type ButtonHTMLAttributes } from "react";
 import { COLORS } from "../styles/tokens";
+import { useAccessibility } from "../hooks/useAccessibility";
 
 type ButtonVariant = "primary" | "ghost" | "danger" | "success";
 
@@ -15,6 +16,7 @@ export default function Button({
   ...rest
 }: ButtonProps) {
   const [hov, setHov] = useState(false);
+  const { minTarget } = useAccessibility();
 
   const variants: Record<ButtonVariant, React.CSSProperties> = {
     primary: {
@@ -49,16 +51,16 @@ export default function Button({
       onBlur={() => setHov(false)}
       style={{
         ...variants[variant],
-        padding: "7px 16px",
+        padding: minTarget ? "7px 16px" : "4px 10px",
         borderRadius: 4,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.4 : 1,
-        fontSize: 12,
+        fontSize: minTarget ? 12 : 11,
         fontFamily: "inherit",
         transition: "all 0.15s",
         letterSpacing: "0.04em",
-        minHeight: 44,
-        minWidth: 44,
+        minHeight: minTarget || undefined,
+        minWidth: minTarget || undefined,
         ...style,
       }}
       {...rest}

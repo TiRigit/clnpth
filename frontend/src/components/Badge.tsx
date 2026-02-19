@@ -21,6 +21,7 @@ export default function Badge({ label, color = "accent" }: BadgeProps) {
   return (
     <span
       role="status"
+      data-cb-badge={color}
       style={{
         background: s.bg,
         color: s.text,

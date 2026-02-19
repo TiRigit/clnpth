@@ -1,4 +1,5 @@
 import { COLORS } from "../styles/tokens";
+import { useAccessibility } from "../hooks/useAccessibility";
 import Badge from "../components/Badge";
 
 const CATEGORIES = [
@@ -24,6 +25,7 @@ const DECISIONS = [
 ];
 
 export default function SupervisorScreen() {
+  const { minTarget } = useAccessibility();
   return (
     <div style={{ flex: 1, overflow: "auto", padding: 32 }} className="anim-fade">
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -106,8 +108,8 @@ export default function SupervisorScreen() {
                           transition: "background 0.2s",
                           border: "none",
                           padding: 0,
-                          minWidth: 44,
-                          minHeight: 44,
+                          minWidth: minTarget || undefined,
+                          minHeight: minTarget || undefined,
                           display: "flex",
                           alignItems: "center",
                         }}

@@ -1,5 +1,7 @@
 import { COLORS } from "../styles/tokens";
 import type { ScreenId } from "../types";
+import { useAccessibility } from "../hooks/useAccessibility";
+import A11yPanel from "./A11yPanel";
 
 interface NavItem {
   id: ScreenId;
@@ -22,6 +24,7 @@ interface NavProps {
 }
 
 export default function Nav({ active, setActive, counts }: NavProps) {
+  const { minTarget } = useAccessibility();
   return (
     <nav
       id="nav"
@@ -91,7 +94,7 @@ export default function Nav({ active, setActive, counts }: NavProps) {
                 fontFamily: "inherit",
                 fontSize: 12,
                 letterSpacing: "0.04em",
-                minHeight: 44,
+                minHeight: minTarget || undefined,
               }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -143,6 +146,9 @@ export default function Nav({ active, setActive, counts }: NavProps) {
           </div>
         ))}
       </div>
+
+      {/* A11y Settings */}
+      <A11yPanel />
     </nav>
   );
 }
