@@ -10,6 +10,7 @@ from db.session import engine
 from routes.articles import router as articles_router
 from routes.images import router as images_router
 from routes.translations import router as translations_router
+from routes.supervisor import router as supervisor_router
 from routes.webhook import router as webhook_router
 from ws import manager
 
@@ -39,6 +40,7 @@ app.add_middleware(
 
 app.include_router(articles_router)
 app.include_router(images_router)
+app.include_router(supervisor_router)
 app.include_router(translations_router)
 app.include_router(webhook_router)
 

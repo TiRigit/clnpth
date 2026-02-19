@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from db.models import RedaktionsLog, ArtikelArchiv, ArtikelUebersetzung, SupervisorLog
 from db.session import get_db
+from services.learning_strategy import process_editor_decision
 from db.schemas import (
     ArticleCreate, ArticleApprove, ArticleRevise,
     ArticleListItem, ArticleDetail, TranslationResponse,
@@ -140,18 +141,8 @@ async def approve_article(
     row.status = "published"
     row.aktualisiert_am = datetime.utcnow()
 
-    # Log supervisor decision
-    latest_sv = await db.execute(
-        select(SupervisorLog)
-        .where(SupervisorLog.artikel_id == article_id)
-        .order_by(SupervisorLog.erstellt_am.desc())
-        .limit(1)
-    )
-    sv = latest_sv.scalar_one_or_none()
-    if sv:
-        sv.redakteur_entscheidung = "freigeben"
-        sv.redakteur_feedback = body.feedback
-        sv.abweichung = sv.supervisor_empfehlung != "freigeben"
+    # Update learning systems (tonality profile, topic ranking, deviation tracking)
+    await process_editor_decision(db, article_id, "freigeben", body.feedback)
 
     await manager.broadcast("article:approved", {
         "id": row.id, "titel": row.titel,
@@ -176,18 +167,8 @@ async def revise_article(
     row.status = "generating"
     row.aktualisiert_am = datetime.utcnow()
 
-    # Log supervisor decision
-    latest_sv = await db.execute(
-        select(SupervisorLog)
-        .where(SupervisorLog.artikel_id == article_id)
-        .order_by(SupervisorLog.erstellt_am.desc())
-        .limit(1)
-    )
-    sv = latest_sv.scalar_one_or_none()
-    if sv:
-        sv.redakteur_entscheidung = "ueberarbeiten"
-        sv.redakteur_feedback = body.feedback
-        sv.abweichung = sv.supervisor_empfehlung != "ueberarbeiten"
+    # Update learning systems
+    await process_editor_decision(db, article_id, "ueberarbeiten", body.feedback)
 
     # Re-trigger n8n with feedback
     await trigger_article_generation(

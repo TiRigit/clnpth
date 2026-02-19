@@ -78,6 +78,46 @@ export interface CreateArticlePayload {
   bild_typ?: string;
 }
 
+export interface TonalityEntry {
+  id: number;
+  merkmal: string;
+  wert: string;
+  gewichtung: number;
+  belege: number;
+}
+
+export interface TopicRanking {
+  id: number;
+  thema: string;
+  kategorie: string;
+  artikel_count: number;
+  freigabe_rate: number | null;
+  letzter_artikel: string | null;
+}
+
+export interface DeviationStats {
+  total_decisions: number;
+  deviations: number;
+  deviation_rate: number;
+}
+
+export interface SupervisorDecision {
+  id: number;
+  artikel_id: number;
+  empfehlung: string | null;
+  score: number | null;
+  redakteur_entscheidung: string | null;
+  abweichung: boolean;
+  erstellt_am: string | null;
+}
+
+export interface SupervisorDashboard {
+  tonality_profile: TonalityEntry[];
+  themen_ranking: TopicRanking[];
+  recent_decisions: SupervisorDecision[];
+  deviation_stats: DeviationStats;
+}
+
 // ── API functions ──
 
 export const api = {
@@ -157,6 +197,37 @@ export const api = {
       request<{ comfyui: boolean; runpod: boolean }>(
         `/articles/${articleId}/image/backends`
       ),
+  },
+
+  supervisor: {
+    dashboard: () =>
+      request<SupervisorDashboard>("/supervisor/dashboard"),
+
+    evaluate: (artikelId: number) =>
+      request<{ ok: boolean }>("/supervisor/evaluate", {
+        method: "POST",
+        body: JSON.stringify({ artikel_id: artikelId }),
+      }),
+
+    tonality: () =>
+      request<TonalityEntry[]>("/supervisor/tonality"),
+
+    addTonality: (merkmal: string, wert: string, gewichtung: number = 0.5) =>
+      request<{ ok: boolean }>("/supervisor/tonality", {
+        method: "POST",
+        body: JSON.stringify({ merkmal, wert, gewichtung }),
+      }),
+
+    deleteTonality: (entryId: number) =>
+      request<{ ok: boolean }>(`/supervisor/tonality/${entryId}`, {
+        method: "DELETE",
+      }),
+
+    topics: () =>
+      request<TopicRanking[]>("/supervisor/topics"),
+
+    deviations: () =>
+      request<DeviationStats>("/supervisor/deviations"),
   },
 
   health: () => request<{ status: string; version: string; ws_connections: number }>("/health"),
