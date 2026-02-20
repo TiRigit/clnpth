@@ -42,7 +42,10 @@
   padding: 0;
 }
 
-/* Base */
+/* ═══════════════════════════════════════════════════════════
+   DEFAULT — Kompakt, mehrfarbig, ansprechend
+   ═══════════════════════════════════════════════════════════ */
+
 :root {
   --color-bg: #0f0f0f;
   --color-surface: #161616;
@@ -61,8 +64,7 @@
   --color-yellow: #d4a843;
   --font-serif: 'Playfair Display', serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --min-target: 44px;
-  --spacing-mult: 1;
+  --min-target: 0px;
   font-size: 16px;
 }
 
@@ -81,27 +83,16 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 
-/* ═══════════════════════════════════════════════════════════
-   BARRIEREARM (Default) — .a11y-accessible auf <html>
-   ═══════════════════════════════════════════════════════════ */
-
-/* Focus visible — nur im barrierearmem Modus prominent */
-.a11y-accessible :focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Im Kompaktmodus: subtiler Focus */
-.a11y-compact :focus-visible {
+/* Default Focus — subtil */
+:focus-visible {
   outline: 1px solid var(--color-border-hot);
   outline-offset: 1px;
 }
-
 :focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Skip navigation — nur im barrierearmem Modus sichtbar */
+/* Skip-Nav — im Default-Modus versteckt */
 .skip-link {
   position: absolute;
   top: -100%;
@@ -114,9 +105,6 @@ body {
   border-radius: 0 0 4px 4px;
   transition: top 0.2s;
   text-decoration: none;
-}
-.a11y-accessible .skip-link:focus {
-  top: 0;
 }
 .a11y-compact .skip-link {
   display: none;
@@ -135,48 +123,169 @@ body {
   border-width: 0;
 }
 
-/* Kompaktmodus: kleinere Targets, weniger Padding */
-.a11y-compact {
-  --min-target: 0px;
-  --spacing-mult: 0.75;
-}
-
 /* ═══════════════════════════════════════════════════════════
-   FARBENBLIND-MODUS — .a11y-colorblind auf <html>
-   Verwendet Muster/Raender zusaetzlich zu Farben
+   BARRIEREARM — .a11y-accessible auf <html>
+   Hoechste Stufe: Rein Schwarz/Weiss, grosse Targets,
+   Farbenblind-Pattern, volle ARIA-Sichtbarkeit.
+   KEINE Graustufen — nur #000000 und #ffffff.
    ═══════════════════════════════════════════════════════════ */
 
-/* Farbenblind: Status-Punkte bekommen Randmuster */
-.a11y-colorblind [data-cb-status="success"] {
-  border: 2px solid currentColor !important;
-  border-style: solid !important;
-}
-.a11y-colorblind [data-cb-status="warning"] {
-  border: 2px dashed currentColor !important;
-}
-.a11y-colorblind [data-cb-status="error"] {
-  border: 2px dotted currentColor !important;
-}
-.a11y-colorblind [data-cb-status="info"] {
-  border: 2px double currentColor !important;
+.a11y-accessible {
+  --color-bg: #000000;
+  --color-surface: #000000;
+  --color-surface-high: #000000;
+  --color-border: #ffffff;
+  --color-border-hot: #ffffff;
+  --color-accent: #ffffff;
+  --color-accent-dim: #ffffff;
+  --color-accent-glow: rgba(255,255,255,0.15);
+  --color-text: #ffffff;
+  --color-text-muted: #ffffff;
+  --color-text-dim: #ffffff;
+  --color-green: #ffffff;
+  --color-red: #ffffff;
+  --color-blue: #ffffff;
+  --color-yellow: #ffffff;
+  --min-target: 44px;
 }
 
-/* Farbenblind: Fortschrittsbalken mit Pattern-Overlay */
-.a11y-colorblind [role="progressbar"] > div {
+/* ── Focus: breiter weisser Ring ── */
+.a11y-accessible :focus-visible {
+  outline: 3px solid #ffffff !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Skip-Nav sichtbar bei Fokus ── */
+.a11y-accessible .skip-link:focus {
+  top: 0;
+  background: #ffffff;
+  color: #000000;
+}
+
+/* ── Globaler Farbzwang: ALLES Schwarz/Weiss ──
+   Diese Regeln ueberschreiben Inline-Styles aus tokens.ts */
+
+.a11y-accessible * {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.a11y-accessible body,
+.a11y-accessible div,
+.a11y-accessible nav,
+.a11y-accessible main,
+.a11y-accessible section,
+.a11y-accessible article,
+.a11y-accessible aside,
+.a11y-accessible fieldset {
+  background-color: #000000 !important;
+}
+
+/* Aktive/selektierte Elemente: invertiert */
+.a11y-accessible button[aria-selected="true"],
+.a11y-accessible button[aria-checked="true"],
+.a11y-accessible [data-active="true"] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+.a11y-accessible button[aria-selected="true"] *,
+.a11y-accessible button[aria-checked="true"] *,
+.a11y-accessible [data-active="true"] * {
+  color: #000000 !important;
+}
+
+/* Buttons: weisser Rand, schwarzer Hintergrund */
+.a11y-accessible button {
+  background-color: #000000 !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  min-height: 44px;
+  min-width: 44px;
+}
+.a11y-accessible button:hover,
+.a11y-accessible button:focus-visible {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+.a11y-accessible button:hover *,
+.a11y-accessible button:focus-visible * {
+  color: #000000 !important;
+}
+.a11y-accessible button:disabled {
+  opacity: 0.3 !important;
+}
+
+/* Inputs, Textareas, Selects */
+.a11y-accessible input,
+.a11y-accessible textarea,
+.a11y-accessible select {
+  background-color: #000000 !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  min-height: 44px;
+}
+.a11y-accessible input::placeholder,
+.a11y-accessible textarea::placeholder {
+  color: #ffffff !important;
+  opacity: 0.6 !important;
+}
+
+/* Badges: Rein S/W mit Farbenblind-Symbolen */
+.a11y-accessible [data-cb-badge] {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+.a11y-accessible [data-cb-badge="green"]::before { content: "\2713 "; }
+.a11y-accessible [data-cb-badge="red"]::before { content: "\2717 "; }
+.a11y-accessible [data-cb-badge="yellow"]::before { content: "\26A0 "; }
+.a11y-accessible [data-cb-badge="blue"]::before { content: "\2139 "; }
+
+/* Status-Indikatoren: verschiedene Randmuster */
+.a11y-accessible [data-cb-status="success"] {
+  border: 2px solid #ffffff !important;
+}
+.a11y-accessible [data-cb-status="warning"] {
+  border: 2px dashed #ffffff !important;
+}
+.a11y-accessible [data-cb-status="error"] {
+  border: 2px dotted #ffffff !important;
+}
+.a11y-accessible [data-cb-status="info"] {
+  border: 2px double #ffffff !important;
+}
+
+/* Fortschrittsbalken mit Schraffur */
+.a11y-accessible [role="progressbar"] > div {
   background-image: repeating-linear-gradient(
     45deg,
     transparent,
     transparent 3px,
-    rgba(255,255,255,0.15) 3px,
-    rgba(255,255,255,0.15) 6px
+    rgba(255,255,255,0.25) 3px,
+    rgba(255,255,255,0.25) 6px
   ) !important;
 }
 
-/* Farbenblind: Badges mit Icon-Prefix */
-.a11y-colorblind [data-cb-badge="green"]::before { content: "\2713 "; }
-.a11y-colorblind [data-cb-badge="red"]::before { content: "\2717 "; }
-.a11y-colorblind [data-cb-badge="yellow"]::before { content: "\26A0 "; }
-.a11y-colorblind [data-cb-badge="blue"]::before { content: "\2139 "; }
+/* Scrollbar im A11y-Modus */
+.a11y-accessible ::-webkit-scrollbar-thumb {
+  background: #ffffff !important;
+}
+
+/* Nav-Zaehler-Badges: invertiert */
+.a11y-accessible [aria-label$="ausstehend"] {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Spinner sichtbar machen */
+.a11y-accessible [role="status"] svg,
+.a11y-accessible .spinner {
+  color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SYSTEM-PREFERENCES
+   ═══════════════════════════════════════════════════════════ */
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
@@ -188,7 +297,7 @@ body {
   }
 }
 
-/* High contrast */
+/* High contrast (OS-level) */
 @media (prefers-contrast: high) {
   :root {
     --color-text: #ffffff;
@@ -199,7 +308,10 @@ body {
   }
 }
 
-/* Animations */
+/* ═══════════════════════════════════════════════════════════
+   ANIMATIONS + UTILITIES
+   ═══════════════════════════════════════════════════════════ */
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(0.5rem); }
   to { opacity: 1; transform: translateY(0); }
@@ -214,7 +326,6 @@ body {
   animation: fadeIn 0.35s ease forwards;
 }
 
-/* Utility */
 .serif {
   font-family: var(--font-serif);
 }

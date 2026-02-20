@@ -1,24 +1,22 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 export interface A11ySettings {
-  /** Barrierearmer Modus (Default: an) — groessere Touch-Targets, Focus-Visible, Skip-Nav */
+  /** Barrierearmer Modus (Default: aus) — S/W-Kontrast, grosse Targets, Farbenblind-Pattern, volle ARIA */
   accessible: boolean;
-  /** Farbenblind-Modus — zusaetzliche Pattern-Indikatoren neben Farben */
-  colorblind: boolean;
 }
 
 const STORAGE_KEY = "clnpth-a11y";
 
 const DEFAULTS: A11ySettings = {
-  accessible: true,
-  colorblind: false,
+  accessible: false,
 };
 
 function loadSettings(): A11ySettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    return { accessible: Boolean(parsed.accessible) };
   } catch {
     return DEFAULTS;
   }
@@ -33,18 +31,15 @@ function saveSettings(s: A11ySettings) {
 }
 
 export interface A11yContext extends A11ySettings {
-  toggle: (key: keyof A11ySettings) => void;
+  toggle: () => void;
   /** Min touch-target size: 44px (accessible) or 0 (compact) */
   minTarget: number;
-  /** Spacing multiplier: 1 (accessible) or 0.75 (compact) */
-  spacing: number;
 }
 
 export const AccessibilityContext = createContext<A11yContext>({
   ...DEFAULTS,
   toggle: () => {},
-  minTarget: 44,
-  spacing: 1,
+  minTarget: 0,
 });
 
 export function useAccessibility() {
@@ -56,21 +51,20 @@ export function useAccessibilityProvider(): A11yContext {
 
   useEffect(() => {
     saveSettings(settings);
-    // CSS-Klassen auf html-Element setzen
     const root = document.documentElement;
     root.classList.toggle("a11y-accessible", settings.accessible);
     root.classList.toggle("a11y-compact", !settings.accessible);
-    root.classList.toggle("a11y-colorblind", settings.colorblind);
+    // Colorblind patterns are included in accessible mode
+    root.classList.toggle("a11y-colorblind", settings.accessible);
   }, [settings]);
 
-  const toggle = useCallback((key: keyof A11ySettings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggle = useCallback(() => {
+    setSettings((prev) => ({ accessible: !prev.accessible }));
   }, []);
 
   return {
     ...settings,
     toggle,
     minTarget: settings.accessible ? 44 : 0,
-    spacing: settings.accessible ? 1 : 0.75,
   };
 }

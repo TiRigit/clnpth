@@ -160,6 +160,23 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ feedback }),
       }),
+
+    cancel: (id: number) =>
+      request<ArticleListItem>(`/articles/${id}/cancel`, { method: "PATCH" }),
+
+    retry: (id: number) =>
+      request<ArticleListItem>(`/articles/${id}/retry`, { method: "PATCH" }),
+
+    related: (id: number, limit = 5) =>
+      request<{ id: number; titel: string; similarity: number }[]>(
+        `/articles/${id}/related?limit=${limit}`
+      ),
+
+    bulk: (payload: { topics: string[]; kategorie?: string; sprachen?: Record<string, boolean>; bild_typ?: string }) =>
+      request<{ created: number; articles: ArticleListItem[] }>("/articles/bulk", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
   },
 
   translations: {
@@ -256,5 +273,26 @@ export const api = {
       request<WpCheckResult>(`/articles/${articleId}/publish/wp-check`),
   },
 
-  health: () => request<{ status: string; version: string; ws_connections: number }>("/health"),
+  social: {
+    generate: (articleId: number) =>
+      request<{ id: number; artikel_id: number; platform: string; text: string; hashtags: string[] }[]>(
+        `/articles/${articleId}/social/generate`,
+        { method: "POST" }
+      ),
+
+    get: (articleId: number) =>
+      request<{ id: number; artikel_id: number; platform: string; text: string; hashtags: string[] }[]>(
+        `/articles/${articleId}/social/`
+      ),
+  },
+
+  rss: {
+    parse: (url: string) =>
+      request<{ feed_title: string; items: { title: string; link: string; summary: string; published: string }[] }>(
+        "/rss/parse",
+        { method: "POST", body: JSON.stringify({ url }) }
+      ),
+  },
+
+  health: () => request<{ status: string; version: string; ws_connections: number; features?: Record<string, boolean> }>("/health"),
 };

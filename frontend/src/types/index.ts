@@ -5,7 +5,11 @@ export type ArticleStatus =
   | "translating"
   | "review"
   | "published"
-  | "rejected";
+  | "rejected"
+  | "failed"
+  | "timeout"
+  | "paused"
+  | "cancelled";
 
 export type Language = "de" | "en" | "es" | "fr";
 

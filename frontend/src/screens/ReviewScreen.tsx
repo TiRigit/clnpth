@@ -3,6 +3,7 @@ import { useAccessibility } from "../hooks/useAccessibility";
 import { useArticleDetail } from "../hooks/useArticles";
 import { useTranslations } from "../hooks/useTranslations";
 import { useImage } from "../hooks/useImage";
+import { useFeatures } from "../hooks/useFeatures";
 import { api } from "../api/client";
 import { COLORS } from "../styles/tokens";
 import type { Language, Source } from "../types";
@@ -24,6 +25,7 @@ export default function ReviewScreen({ articleId }: ReviewScreenProps) {
   const { translations } = useTranslations(articleId);
   const { image, trigger: triggerImage } = useImage(articleId);
 
+  const { features } = useFeatures();
   const [editedTitle, setEditedTitle] = useState("");
   const [editedBody, setEditedBody] = useState("");
   const [editedLead, setEditedLead] = useState("");
@@ -31,6 +33,9 @@ export default function ReviewScreen({ articleId }: ReviewScreenProps) {
   const [feedback, setFeedback] = useState("");
   const [decision, setDecision] = useState<"publish" | "revise" | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [relatedArticles, setRelatedArticles] = useState<{ id: number; titel: string; similarity: number }[]>([]);
+  const [socialSnippets, setSocialSnippets] = useState<{ platform: string; text: string; hashtags: string[] }[]>([]);
+  const [socialLoading, setSocialLoading] = useState(false);
 
   // Build translations map: lang -> translation
   const translationMap = translations.reduce<Record<string, { titel: string | null; lead: string | null; body: string | null; ready: boolean }>>(
@@ -66,6 +71,29 @@ export default function ReviewScreen({ articleId }: ReviewScreenProps) {
       setSources(mappedSources);
     }
   }, [article]);
+
+  // Load related articles
+  useEffect(() => {
+    if (features.crosslinking && articleId) {
+      api.articles.related(articleId).then(setRelatedArticles).catch(() => {});
+    }
+  }, [articleId, features.crosslinking]);
+
+  // Load existing social snippets
+  useEffect(() => {
+    if (features.social && articleId) {
+      api.social.get(articleId).then(setSocialSnippets).catch(() => {});
+    }
+  }, [articleId, features.social]);
+
+  const handleGenerateSocial = async () => {
+    setSocialLoading(true);
+    try {
+      const result = await api.social.generate(articleId);
+      setSocialSnippets(result);
+    } catch { /* silent */ }
+    setSocialLoading(false);
+  };
 
   // Supervisor data
   const supervisor = article?.supervisor;
@@ -730,6 +758,88 @@ export default function ReviewScreen({ articleId }: ReviewScreenProps) {
                 </div>
               </div>
             </div>
+
+            {/* Related articles */}
+            {features.crosslinking && relatedArticles.length > 0 && (
+              <div
+                style={{
+                  background: COLORS.surface,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 6,
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ padding: "10px 14px", borderBottom: `1px solid ${COLORS.border}` }}>
+                  <span style={{ color: COLORS.textDim, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                    Verwandte Artikel
+                  </span>
+                </div>
+                <div style={{ padding: 12 }}>
+                  {relatedArticles.map((r) => (
+                    <div key={r.id} style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ color: COLORS.text, fontSize: 11 }}>{r.titel}</span>
+                      <Badge label={`${Math.round(r.similarity * 100)}%`} color="muted" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Social snippets */}
+            {features.social && (
+              <div
+                style={{
+                  background: COLORS.surface,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 6,
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ padding: "10px 14px", borderBottom: `1px solid ${COLORS.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ color: COLORS.textDim, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                    Social Media
+                  </span>
+                  <Button
+                    onClick={handleGenerateSocial}
+                    disabled={socialLoading}
+                    style={{ padding: "3px 8px", fontSize: 10 }}
+                  >
+                    {socialLoading ? "Generiere..." : socialSnippets.length > 0 ? "Neu generieren" : "Generieren"}
+                  </Button>
+                </div>
+                <div style={{ padding: 12 }}>
+                  {socialSnippets.length === 0 ? (
+                    <div style={{ color: COLORS.textDim, fontSize: 11, textAlign: "center", padding: 8 }}>
+                      Noch keine Snippets generiert.
+                    </div>
+                  ) : (
+                    socialSnippets.map((s, i) => (
+                      <div key={i} style={{ marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                          <Badge label={s.platform} color="blue" />
+                          <button
+                            onClick={() => navigator.clipboard.writeText(s.text)}
+                            style={{ background: "none", border: "none", color: COLORS.textDim, fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            Kopieren
+                          </button>
+                        </div>
+                        <div style={{ color: COLORS.textMuted, fontSize: 11, lineHeight: 1.5, marginBottom: 4 }}>
+                          {s.text}
+                        </div>
+                        {s.hashtags.length > 0 && (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                            {s.hashtags.map((h) => (
+                              <span key={h} style={{ color: COLORS.accent, fontSize: 10 }}>#{h}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Feedback */}
             <div

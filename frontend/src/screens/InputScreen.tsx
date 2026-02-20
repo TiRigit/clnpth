@@ -1,6 +1,8 @@
 import { useState, useRef, type ChangeEvent } from "react";
 import { useAccessibility } from "../hooks/useAccessibility";
 import { useCreateArticle } from "../hooks/useArticles";
+import { useFeatures } from "../hooks/useFeatures";
+import { api } from "../api/client";
 import { COLORS } from "../styles/tokens";
 import type { TriggerType } from "../types";
 import Button from "../components/Button";
@@ -31,16 +33,46 @@ interface InputScreenProps {
 export default function InputScreen({ onSubmit }: InputScreenProps) {
   const [trigger, setTrigger] = useState<TriggerType>("prompt");
   const { minTarget } = useAccessibility();
+  const { features } = useFeatures();
   const [text, setText] = useState("");
+  const [bulkMode, setBulkMode] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [urls, setUrls] = useState([""]);
   const [category, setCategory] = useState("Technologie");
   const [langs, setLangs] = useState({ de: true, en: true, es: true, fr: true });
   const [imageType, setImageType] = useState("Illustration");
+  const [rssUrl, setRssUrl] = useState("");
+  const [rssItems, setRssItems] = useState<{ title: string; link: string; selected: boolean }[]>([]);
+  const [rssLoading, setRssLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { create, submitting, error } = useCreateArticle();
 
   const handleSubmit = async () => {
+    // Bulk mode: multiple topics
+    if (bulkMode && features.bulk_input) {
+      const topics = text.split("\n").map((t) => t.trim()).filter(Boolean);
+      if (topics.length === 0) return;
+      try {
+        await api.articles.bulk({ topics, kategorie: category, sprachen: langs, bild_typ: imageType.toLowerCase() });
+        onSubmit();
+      } catch { /* silent */ }
+      return;
+    }
+
+    // RSS mode: selected items
+    if (trigger === "rss" && rssItems.some((i) => i.selected)) {
+      const selected = rssItems.filter((i) => i.selected);
+      if (features.bulk_input && selected.length > 1) {
+        await api.articles.bulk({ topics: selected.map((i) => i.title), kategorie: category, sprachen: langs });
+      } else {
+        for (const item of selected) {
+          await create({ trigger_typ: "rss", text: item.title, kategorie: category, sprachen: langs, urls: [item.link] });
+        }
+      }
+      onSubmit();
+      return;
+    }
+
     if (!text.trim() && trigger === "prompt") return;
     const result = await create({
       trigger_typ: trigger,
@@ -53,6 +85,16 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
     if (result) {
       onSubmit();
     }
+  };
+
+  const handleRssLoad = async () => {
+    if (!rssUrl.trim()) return;
+    setRssLoading(true);
+    try {
+      const result = await api.rss.parse(rssUrl);
+      setRssItems(result.items.map((i) => ({ ...i, selected: false })));
+    } catch { /* silent */ }
+    setRssLoading(false);
   };
 
   const toggleLang = (l: string) =>
@@ -71,7 +113,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
   const placeholders: Record<TriggerType, string> = {
     prompt:
       "Schreib frei \u2014 ein Satz, ein Absatz, Stichworte, Ideen. Das System erkennt Kontext, recherchiert und strukturiert automatisch.\n\nBeispiel: \u00ABArtikel \u00fcber EU AI Act Auswirkungen auf Kleinverlage, besonders \u00dcbersetzungstools. Kritisch, aber konstruktiv. Verweise auf unseren Bericht vom M\u00e4rz.\u00BB",
-    url: "https://example.com/artikel...",
+    url: "Recherche-Anweisung: Was soll mit den URLs geschehen?\n\nBeispiel: \u00ABFasse zusammen und vergleiche mit unserem Q1-Bericht. Fokus auf regulatorische Auswirkungen f\u00fcr Kleinverlage.\u00BB",
     rss: "Thema, Kontext, Zielgruppe...",
     calendar: "Thema, Kontext, Zielgruppe...",
     image: "Beschreibe das gew\u00fcnschte Bild oder Illustrationskonzept...",
@@ -79,7 +121,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
 
   const fieldLabels: Record<TriggerType, string> = {
     prompt: "Eingabe / Briefing",
-    url: "URL(s)",
+    url: "Recherche-Anweisung",
     rss: "Thema / Notizen",
     calendar: "Thema / Notizen",
     image: "Bild-Beschreibung",
@@ -151,6 +193,61 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20 }}>
           {/* Main input area */}
           <div>
+            {/* Bulk toggle */}
+            {features.bulk_input && trigger === "prompt" && (
+              <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
+                {(["Einzeln", "Mehrere"] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    variant={
+                      (mode === "Einzeln" && !bulkMode) || (mode === "Mehrere" && bulkMode)
+                        ? "primary"
+                        : "ghost"
+                    }
+                    onClick={() => setBulkMode(mode === "Mehrere")}
+                    style={{ padding: "5px 12px", fontSize: 11 }}
+                  >
+                    {mode}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            {/* RSS feed input */}
+            {trigger === "rss" && features.rss && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ color: COLORS.textDim, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+                  RSS-Feed URL
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <input
+                    value={rssUrl}
+                    onChange={(e) => setRssUrl(e.target.value)}
+                    placeholder="https://example.com/feed.xml"
+                    aria-label="RSS-Feed URL"
+                    style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 4, padding: "8px 12px", color: COLORS.text, fontFamily: "inherit", fontSize: 12, outline: "none" }}
+                  />
+                  <Button onClick={handleRssLoad} disabled={rssLoading} style={{ padding: "8px 12px" }}>
+                    {rssLoading ? "Lade..." : "Feed laden"}
+                  </Button>
+                </div>
+                {rssItems.length > 0 && (
+                  <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: 12, maxHeight: 240, overflow: "auto" }}>
+                    {rssItems.map((item, i) => (
+                      <label key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, cursor: "pointer", fontSize: 12, color: COLORS.text }}>
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => setRssItems((prev) => prev.map((it, j) => j === i ? { ...it, selected: !it.selected } : it))}
+                        />
+                        {item.title}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Text area */}
             <div
               style={{
@@ -178,7 +275,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                     textTransform: "uppercase",
                   }}
                 >
-                  {fieldLabels[trigger]}
+                  {bulkMode ? "Themen (1 pro Zeile)" : fieldLabels[trigger]}
                 </label>
                 <span aria-live="polite" style={{ color: COLORS.textDim, fontSize: 10 }}>
                   {text.length} Zeichen
@@ -217,7 +314,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                     marginBottom: 8,
                   }}
                 >
-                  Kontext-URLs (optional)
+                  {trigger === "url" ? "Quell-URLs" : "Kontext-URLs (optional)"}
                 </div>
                 {urls.map((u, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -419,31 +516,29 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
             </fieldset>
 
             {/* Sprachen */}
-            <div
+            <fieldset
               style={{
                 background: COLORS.surface,
                 border: `1px solid ${COLORS.border}`,
                 borderRadius: 6,
                 marginBottom: 12,
+                padding: 0,
               }}
             >
-              <div
+              <legend
                 style={{
                   padding: "10px 14px",
+                  color: COLORS.textDim,
+                  fontSize: 10,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  width: "100%",
                   borderBottom: `1px solid ${COLORS.border}`,
+                  display: "block",
                 }}
               >
-                <span
-                  style={{
-                    color: COLORS.textDim,
-                    fontSize: 10,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Sprachen
-                </span>
-              </div>
+                Sprachen
+              </legend>
               <div style={{ padding: 12 }}>
                 {(
                   [
@@ -510,7 +605,7 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Bild-Typ */}
             <fieldset
@@ -519,21 +614,24 @@ export default function InputScreen({ onSubmit }: InputScreenProps) {
                 border: `1px solid ${COLORS.border}`,
                 borderRadius: 6,
                 marginBottom: 20,
-                padding: 12,
+                padding: 0,
               }}
             >
               <legend
                 style={{
+                  padding: "10px 14px",
                   color: COLORS.textDim,
                   fontSize: 10,
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
-                  marginBottom: 10,
+                  width: "100%",
+                  borderBottom: `1px solid ${COLORS.border}`,
+                  display: "block",
                 }}
               >
                 Bild-Generierung
               </legend>
-              <div role="radiogroup">
+              <div style={{ padding: 12 }} role="radiogroup">
                 {IMAGE_TYPES.map((t) => (
                   <button
                     key={t}

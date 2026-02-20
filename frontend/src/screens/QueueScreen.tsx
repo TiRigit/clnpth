@@ -2,18 +2,23 @@ import { useState } from "react";
 import { COLORS } from "../styles/tokens";
 import { useAccessibility } from "../hooks/useAccessibility";
 import { useArticleList, useQueueStats } from "../hooks/useArticles";
+import { api } from "../api/client";
 import { timeAgo } from "../utils/timeAgo";
 import type { ArticleStatus } from "../types";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
 import Spinner from "../components/Spinner";
 
-const STATUS_MAP: Record<ArticleStatus, { label: string; color: "yellow" | "blue" | "green" | "red" }> = {
+const STATUS_MAP: Record<ArticleStatus, { label: string; color: "yellow" | "blue" | "green" | "red" | "muted" }> = {
   review: { label: "Freigabe ausstehend", color: "yellow" },
   generating: { label: "Wird generiert", color: "blue" },
   translating: { label: "\u00dcbersetzung l\u00e4uft", color: "blue" },
   published: { label: "Publiziert", color: "green" },
   rejected: { label: "Abgelehnt", color: "red" },
+  failed: { label: "Fehlgeschlagen", color: "red" },
+  timeout: { label: "Timeout", color: "red" },
+  paused: { label: "Pausiert", color: "muted" },
+  cancelled: { label: "Abgebrochen", color: "muted" },
 };
 
 type FilterKey = "all" | "review" | "working" | "published";
@@ -184,6 +189,22 @@ export default function QueueScreen({ onOpenReview }: QueueScreenProps) {
                         <Spinner size={9} label="\u00dcbersetzung l\u00e4uft" /> \u00dcbersetzung
                         l&auml;uft&hellip;
                       </div>
+                    )}
+                    {(status === "generating" || status === "paused") && (
+                      <Button
+                        style={{ padding: "2px 8px", fontSize: 10, marginTop: 4 }}
+                        onClick={(e) => { e.stopPropagation(); api.articles.cancel(item.id).then(() => window.location.reload()); }}
+                      >
+                        Abbrechen
+                      </Button>
+                    )}
+                    {(status === "failed" || status === "timeout" || status === "cancelled") && (
+                      <Button
+                        style={{ padding: "2px 8px", fontSize: 10, marginTop: 4 }}
+                        onClick={(e) => { e.stopPropagation(); api.articles.retry(item.id).then(() => window.location.reload()); }}
+                      >
+                        Wiederholen
+                      </Button>
                     )}
                   </div>
                   <div>

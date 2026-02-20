@@ -24,7 +24,7 @@ interface NavProps {
 }
 
 export default function Nav({ active, setActive, counts }: NavProps) {
-  const { minTarget } = useAccessibility();
+  const { minTarget, accessible } = useAccessibility();
   return (
     <nav
       id="nav"
@@ -130,19 +130,29 @@ export default function Nav({ active, setActive, counts }: NavProps) {
         style={{ padding: "16px 20px", borderTop: `1px solid ${COLORS.border}` }}
       >
         {[
-          { label: "n8n verbunden", color: COLORS.green },
-          { label: "Local WP aktiv", color: COLORS.green },
-          { label: "ComfyUI bereit", color: COLORS.yellow },
+          { label: "n8n verbunden", color: COLORS.green, ok: true },
+          { label: "Local WP aktiv", color: COLORS.green, ok: true },
+          { label: "ComfyUI bereit", color: COLORS.yellow, ok: false },
         ].map((s) => (
           <div
             key={s.label}
+            data-cb-status={s.ok ? "success" : "warning"}
             style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}
           >
-            <div
-              aria-hidden="true"
-              style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }}
-            />
-            <span style={{ color: COLORS.textMuted, fontSize: 10 }}>{s.label}</span>
+            {accessible ? (
+              <span aria-hidden="true" style={{ fontSize: 12, fontWeight: 700 }}>
+                {s.ok ? "\u2713" : "\u26A0"}
+              </span>
+            ) : (
+              <div
+                aria-hidden="true"
+                style={{ width: 6, height: 6, borderRadius: "50%", background: s.color, flexShrink: 0 }}
+              />
+            )}
+            <span style={{ color: COLORS.textMuted, fontSize: 10 }}>
+              {s.label}
+              <span className="sr-only">{s.ok ? " — aktiv" : " — eingeschraenkt"}</span>
+            </span>
           </div>
         ))}
       </div>
