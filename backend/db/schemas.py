@@ -13,6 +13,7 @@ class ArticleCreate(BaseModel):
     sprachen: dict[str, bool] = {"de": True, "en": True, "es": True, "fr": True}
     urls: list[str] = []
     bild_typ: str | None = None
+    tone_of_voice: str | None = None
 
 
 class ArticleApprove(BaseModel):
@@ -114,3 +115,59 @@ class QueueStats(BaseModel):
     review: int
     published: int
     rejected: int
+    failed: int = 0
+    timeout: int = 0
+    paused: int = 0
+    cancelled: int = 0
+
+
+# ── Bulk input ──────────────────────────────────────────────
+
+class TopicItem(BaseModel):
+    topic: str
+    keywords: list[str] = []
+    additional_prompt: str | None = None
+
+
+class BulkArticleCreate(BaseModel):
+    topics: list[str | TopicItem]
+    kategorie: str | None = None
+    sprachen: dict[str, bool] = {"de": True, "en": True, "es": True, "fr": True}
+    bild_typ: str | None = None
+    tone_of_voice: str | None = None
+
+
+class BulkArticleResponse(BaseModel):
+    created: int
+    articles: list[ArticleListItem]
+
+
+# ── Social snippets ─────────────────────────────────────────
+
+class SocialSnippetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    artikel_id: int
+    platform: str
+    text: str
+    hashtags: list[str]
+    erstellt_am: datetime
+
+
+# ── RSS feed ────────────────────────────────────────────────
+
+class RssFeedItem(BaseModel):
+    title: str
+    link: str
+    summary: str = ""
+    published: str = ""
+
+
+class RssParseRequest(BaseModel):
+    url: str
+
+
+class RssParseResponse(BaseModel):
+    feed_title: str
+    items: list[RssFeedItem]

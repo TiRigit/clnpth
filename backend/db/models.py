@@ -23,6 +23,11 @@ class RedaktionsLog(Base):
     kategorie = Column(String(100))
     sprachen = Column(JSONB, default={"de": True, "en": True, "es": True, "fr": True})
     kontext_quellen = Column(JSONB)
+    content_hash = Column(String(64), nullable=True, index=True)
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=3)
+    last_error = Column(Text)
+    timeout_at = Column(DateTime)
     erstellt_am = Column(DateTime, default=datetime.utcnow)
     aktualisiert_am = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -110,3 +115,17 @@ class ThemenRanking(Base):
     artikel_count = Column(Integer, default=0)
     freigabe_rate = Column(Float)
     letzter_artikel = Column(DateTime)
+
+
+class SocialSnippet(Base):
+    __tablename__ = "social_snippets"
+    __table_args__ = {"schema": "clnpth"}
+
+    id = Column(Integer, primary_key=True)
+    artikel_id = Column(Integer, ForeignKey("clnpth.redaktions_log.id"))
+    platform = Column(String(50), nullable=False)  # twitter, linkedin, instagram
+    text = Column(Text, nullable=False)
+    hashtags = Column(JSONB, default=[])
+    erstellt_am = Column(DateTime, default=datetime.utcnow)
+
+    artikel = relationship("RedaktionsLog")

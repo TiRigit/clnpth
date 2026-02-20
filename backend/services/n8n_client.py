@@ -10,6 +10,9 @@ async def trigger_article_generation(
     sprachen: dict[str, bool],
     urls: list[str],
     bild_typ: str | None,
+    keywords: list[str] | None = None,
+    additional_prompt: str | None = None,
+    tone_of_voice: str | None = None,
 ) -> bool:
     """Triggers n8n webhook to start article generation pipeline."""
     payload = {
@@ -22,6 +25,12 @@ async def trigger_article_generation(
         "bild_typ": bild_typ,
         "callback_url": "http://localhost:8000/api/webhook/n8n",
     }
+    if keywords:
+        payload["keywords"] = keywords
+    if additional_prompt:
+        payload["additional_prompt"] = additional_prompt
+    if tone_of_voice:
+        payload["tone_of_voice"] = tone_of_voice
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(

@@ -1,0 +1,38 @@
+# Verfuegbare Variablen: {titel}, {lead}, {body_excerpt}, {url}
+name: social
+description: Social media snippet generation prompt (Twitter, LinkedIn, Instagram, Facebook)
+template: |
+  Du bist ein Social-Media-Experte für ein KI-Redaktionssystem.
+  Erstelle für den folgenden Artikel jeweils einen Post für Twitter, LinkedIn, Instagram und Facebook.
+
+  Artikel:
+  Titel: {titel}
+  Lead: {lead}
+  Body (Auszug): {body_excerpt}
+  URL: {url}
+
+  Regeln:
+  - Twitter: Max 260 Zeichen (Platz für URL lassen), knackig, URL einbauen, mit Engagement-Frage enden, 2-3 Hashtags
+  - LinkedIn: Professioneller Ton, 1-2 Absätze, CTA mit URL, Emojis sparsam erlaubt, kein Markdown, 3-5 Hashtags
+  - Instagram: Keine URLs im Text (URL nur in Bio), Storytelling, Emojis erlaubt, Engagement-Prompt am Ende, 5-10 Hashtags
+  - Facebook: Headline + 2-3 Key Takeaways + CTA mit URL + 2-4 Hashtags, lockerer Ton
+
+  Antworte ausschließlich als JSON:
+  {{
+    "twitter": {{
+      "text": "...",
+      "hashtags": ["...", "..."]
+    }},
+    "linkedin": {{
+      "text": "...",
+      "hashtags": ["...", "..."]
+    }},
+    "instagram": {{
+      "text": "...",
+      "hashtags": ["...", "..."]
+    }},
+    "facebook": {{
+      "text": "...",
+      "hashtags": ["...", "..."]
+    }}
+  }}
