@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     wp_app_password: str = ""
     comfyui_url: str = "http://localhost:8188"
 
+    # Feature flags
+    feature_image: bool = True
+    feature_translation: bool = True
+    feature_social: bool = False
+    feature_rss: bool = False
+    feature_crosslinking: bool = False
+    feature_bulk_input: bool = False
+
     model_config = {
         "env_file": "../.env",
         "env_prefix": "CLNPTH_",

@@ -10,57 +10,29 @@ import uuid
 
 import httpx
 from config import settings
+from services.prompt_loader import load_prompt
 
-# Base workflow templates per image type
-WORKFLOW_TEMPLATES: dict[str, dict] = {
-    "illustration": {
-        "checkpoint": "sd_xl_base_1.0.safetensors",
-        "width": 1024,
-        "height": 1024,
-        "steps": 30,
-        "cfg": 7.5,
-        "sampler": "euler_ancestral",
-        "style_prefix": "digital illustration, editorial style, ",
-    },
-    "infographic": {
-        "checkpoint": "sd_xl_base_1.0.safetensors",
-        "width": 1024,
-        "height": 1536,
-        "steps": 30,
-        "cfg": 7.0,
-        "sampler": "euler",
-        "style_prefix": "clean infographic, data visualization, minimal design, ",
-    },
-    "photo": {
-        "checkpoint": "sd_xl_base_1.0.safetensors",
-        "width": 1024,
-        "height": 768,
-        "steps": 35,
-        "cfg": 7.5,
-        "sampler": "dpmpp_2m",
-        "style_prefix": "photorealistic, editorial photography, ",
-    },
-    "animation": {
-        "checkpoint": "sd_xl_base_1.0.safetensors",
-        "width": 1024,
-        "height": 1024,
-        "steps": 25,
-        "cfg": 7.0,
-        "sampler": "euler_ancestral",
-        "style_prefix": "animated style, motion graphics, ",
-    },
-}
+CHECKPOINT = "sd_xl_base_1.0.safetensors"
 
-NEGATIVE_PROMPT = (
-    "watermark, text, logo, signature, blurry, low quality, "
-    "deformed, ugly, duplicate, mutilated"
-)
+
+def _get_image_config() -> dict:
+    """Load image configuration from YAML."""
+    return load_prompt("image")
+
+
+def _get_style(image_type: str) -> dict:
+    """Get style config for a given image type."""
+    cfg = _get_image_config()
+    styles = cfg.get("styles", {})
+    return styles.get(image_type, styles.get("illustration", {}))
 
 
 def build_workflow(prompt: str, image_type: str = "illustration") -> dict:
     """Build a ComfyUI API workflow JSON from a prompt and image type."""
-    template = WORKFLOW_TEMPLATES.get(image_type, WORKFLOW_TEMPLATES["illustration"])
-    full_prompt = template["style_prefix"] + prompt
+    style = _get_style(image_type)
+    image_cfg = _get_image_config()
+    negative = image_cfg.get("negative_prompt", "")
+    full_prompt = style.get("prefix", "") + prompt
     client_id = str(uuid.uuid4())
 
     # Standard SDXL txt2img workflow for ComfyUI API format
@@ -69,9 +41,9 @@ def build_workflow(prompt: str, image_type: str = "illustration") -> dict:
             "class_type": "KSampler",
             "inputs": {
                 "seed": hash(prompt) % (2**32),
-                "steps": template["steps"],
-                "cfg": template["cfg"],
-                "sampler_name": template["sampler"],
+                "steps": style.get("steps", 30),
+                "cfg": style.get("cfg", 7.5),
+                "sampler_name": style.get("sampler", "euler_ancestral"),
                 "scheduler": "normal",
                 "denoise": 1.0,
                 "model": ["4", 0],
@@ -82,13 +54,13 @@ def build_workflow(prompt: str, image_type: str = "illustration") -> dict:
         },
         "4": {
             "class_type": "CheckpointLoaderSimple",
-            "inputs": {"ckpt_name": template["checkpoint"]},
+            "inputs": {"ckpt_name": CHECKPOINT},
         },
         "5": {
             "class_type": "EmptyLatentImage",
             "inputs": {
-                "width": template["width"],
-                "height": template["height"],
+                "width": style.get("width", 1024),
+                "height": style.get("height", 1024),
                 "batch_size": 1,
             },
         },
@@ -98,7 +70,7 @@ def build_workflow(prompt: str, image_type: str = "illustration") -> dict:
         },
         "7": {
             "class_type": "CLIPTextEncode",
-            "inputs": {"text": NEGATIVE_PROMPT, "clip": ["4", 1]},
+            "inputs": {"text": negative, "clip": ["4", 1]},
         },
         "8": {
             "class_type": "VAEDecode",

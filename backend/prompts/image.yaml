@@ -1,0 +1,34 @@
+name: image
+description: Image generation style prefixes and negative prompt
+negative_prompt: >-
+  watermark, text, logo, signature, blurry, low quality,
+  deformed, ugly, duplicate, mutilated
+styles:
+  illustration:
+    prefix: "digital illustration, editorial style, "
+    width: 1024
+    height: 1024
+    steps: 30
+    cfg: 7.5
+    sampler: euler_ancestral
+  infographic:
+    prefix: "clean infographic, data visualization, minimal design, "
+    width: 1024
+    height: 1536
+    steps: 30
+    cfg: 7.0
+    sampler: euler
+  photo:
+    prefix: "photorealistic, editorial photography, "
+    width: 1024
+    height: 768
+    steps: 35
+    cfg: 7.5
+    sampler: dpmpp_2m
+  animation:
+    prefix: "animated style, motion graphics, "
+    width: 1024
+    height: 1024
+    steps: 25
+    cfg: 7.0
+    sampler: euler_ancestral

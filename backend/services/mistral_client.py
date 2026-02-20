@@ -7,27 +7,7 @@ cultural accuracy, and idiomatic quality. Returns improved text + feedback.
 import json
 import httpx
 from config import settings
-
-REVIEW_PROMPT = """Du bist ein professioneller Übersetzer-Reviewer.
-Prüfe die folgende maschinelle Übersetzung auf:
-1. Idiomatische Korrektheit (natürlicher Sprachfluss)
-2. Kulturelle Angemessenheit
-3. Fachterminologie
-4. HTML-Tag-Integrität
-
-Originaltext (Deutsch):
-{original}
-
-Maschinelle Übersetzung ({lang}):
-{translation}
-
-Antworte ausschließlich als JSON:
-{{
-  "improved": "verbesserte Übersetzung (oder original falls gut)",
-  "changes": ["Liste der Änderungen mit Begründung"],
-  "quality_score": 0-100,
-  "needs_revision": true/false
-}}"""
+from services.prompt_loader import render_prompt
 
 
 async def review_translation(
@@ -42,11 +22,7 @@ async def review_translation(
     lang_names = {"en": "Englisch", "es": "Spanisch", "fr": "Französisch"}
     lang_name = lang_names.get(target_lang, target_lang)
 
-    prompt = REVIEW_PROMPT.format(
-        original=original,
-        translation=translation,
-        lang=lang_name,
-    )
+    prompt = render_prompt("review", original=original, translation=translation, lang=lang_name)
 
     async with httpx.AsyncClient(timeout=60) as client:
         try:

@@ -8,38 +8,7 @@ import json
 
 import httpx
 from config import settings
-
-EVALUATION_PROMPT = """Du bist der Qualitätssupervisor eines KI-Redaktionssystems.
-Bewerte den folgenden Artikel nach diesen Kriterien:
-
-1. **Inhaltliche Qualität** (0-25): Recherche, Faktengenauigkeit, Tiefe
-2. **Sprachliche Qualität** (0-25): Grammatik, Stil, Lesbarkeit
-3. **Tonalität** (0-25): Passt zum Redaktionsprofil? {tonality_context}
-4. **SEO & Struktur** (0-25): Titel, Lead, Absatzstruktur, Keywords
-
-Aktuelles Tonalitätsprofil der Redaktion:
-{tonality_profile}
-
-Artikel:
-Titel: {titel}
-Lead: {lead}
-Body: {body}
-Kategorie: {kategorie}
-
-Antworte ausschließlich als JSON:
-{{
-  "score": 0-100,
-  "empfehlung": "freigeben" | "ueberarbeiten" | "ablehnen",
-  "begruendung": "Kurze Begründung (2-3 Sätze)",
-  "tonality_tags": ["sachlich", "informativ", ...],
-  "details": {{
-    "inhalt": 0-25,
-    "sprache": 0-25,
-    "tonalitaet": 0-25,
-    "seo_struktur": 0-25
-  }},
-  "verbesserungen": ["Konkrete Verbesserungsvorschläge"]
-}}"""
+from services.prompt_loader import render_prompt
 
 
 async def evaluate_article(
@@ -53,7 +22,8 @@ async def evaluate_article(
     if not settings.mistral_api_key:
         return None
 
-    prompt = EVALUATION_PROMPT.format(
+    prompt = render_prompt(
+        "evaluation",
         titel=titel,
         lead=lead,
         body=body,

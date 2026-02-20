@@ -14,12 +14,18 @@ from routes.translations import router as translations_router
 from routes.publish import router as publish_router
 from routes.supervisor import router as supervisor_router
 from routes.webhook import router as webhook_router
+from routes.social import router as social_router
+from routes.rss import router as rss_router
 from ws import manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+    from services.queue_watchdog import watchdog_loop
+    watchdog_task = asyncio.create_task(watchdog_loop())
     yield
+    watchdog_task.cancel()
     await engine.dispose()
 
 
@@ -46,6 +52,8 @@ app.include_router(publish_router)
 app.include_router(supervisor_router)
 app.include_router(translations_router)
 app.include_router(webhook_router)
+app.include_router(social_router)
+app.include_router(rss_router)
 
 # Serve generated images
 _img_dir = Path(settings.image_storage_path)
@@ -68,10 +76,12 @@ if _frontend_dir.exists():
 
 @app.get("/api/health")
 async def health():
+    from services.feature_flags import get_active_features
     return {
         "status": "ok",
         "version": "0.1.0",
         "ws_connections": manager.count,
+        "features": get_active_features(),
     }
 
 
