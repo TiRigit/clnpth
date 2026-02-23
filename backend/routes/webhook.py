@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import settings
 from db.models import RedaktionsLog, ArtikelArchiv, ArtikelUebersetzung, SupervisorLog
 from db.session import get_db
 from db.schemas import N8nCallback
@@ -12,8 +13,21 @@ from ws import manager
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
 
+def verify_webhook_token(x_webhook_token: str = Header(None)):
+    """Validates the x-webhook-token header against the configured token."""
+    expected = settings.n8n_webhook_token
+    if not expected:
+        return  # No token configured — skip validation (dev mode)
+    if x_webhook_token != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing webhook token")
+
+
 @router.post("/n8n")
-async def n8n_callback(payload: N8nCallback, db: AsyncSession = Depends(get_db)):
+async def n8n_callback(
+    payload: N8nCallback,
+    db: AsyncSession = Depends(get_db),
+    _token: None = Depends(verify_webhook_token),
+):
     """Receives callbacks from n8n after each pipeline step."""
     result = await db.execute(
         select(RedaktionsLog).where(RedaktionsLog.id == payload.artikel_id)
