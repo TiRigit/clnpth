@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+__pycache__/
+venv/
+.venv/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Secrets
+.env
+.env.*
+.env.local
+
+# Docker volumes
+docker/volumes/
+
+# Logs
+*.log
+
+# Git
+.git/
+
+# OS
+.DS_Store
+
+# Alembic versions (auto-generated)
+alembic/versions/__pycache__/
