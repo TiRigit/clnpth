@@ -33,5 +33,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Alembic (contains connection string)
+backend/alembic.ini
+
 # Docker local data
 docker/data/

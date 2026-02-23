@@ -24,7 +24,7 @@ services:
     container_name: clnpth-db
     restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: ${CLNPTH_DB_PASSWORD:-aipassword}
+      POSTGRES_PASSWORD: ${CLNPTH_DB_PASSWORD:?CLNPTH_DB_PASSWORD must be set}
       POSTGRES_DB: postgres
     volumes:
       - clnpth-pgdata:/var/lib/postgresql/data
